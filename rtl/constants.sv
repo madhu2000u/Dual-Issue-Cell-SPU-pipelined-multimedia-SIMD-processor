@@ -1,6 +1,17 @@
 `ifndef constants
 `define constants
 
+parameter BYTE = 8;
+parameter HALFWORD = 16;
+parameter WORD = 32;
+parameter QUADWORD = 128;
+parameter IMM10 = 10;
+
+parameter UNIT_ID_SIZE = 3;
+parameter INTERNAL_OPCODE_SIZE = 7;
+
+parameter REG_COUNT=128;
+parameter REG_ADDR_WIDTH=$clog2(REG_COUNT); 
 
 `typedef enum logic [6:0] {
 
@@ -8,7 +19,7 @@
     ADD_WORD = 7'd1;
     ADD_WORD_IMMEDIATE = 7'd2
     SUBTRACT_FROM_WORD = 7'd3
-    SUBTRACT_FROM_IMMEDIATE= 7'd4
+    SUBTRACT_FROM_WORD_IMMEDIATE= 7'd4
     ADD_EXTENDED = 7'd5
     CARRY_GENERATE = 7'd6
     SUBTRACT_FROM_EXTENDED = 7'd7
