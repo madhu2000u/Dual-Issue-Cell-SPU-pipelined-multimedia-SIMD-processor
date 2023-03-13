@@ -79,7 +79,7 @@ parameter Smin = $bitstoshortreal(32'h00800000);
     BRANCH_IF_NOT_ZERO_WORD = 7'd53;
     BRANCH_IF_ZERO_WORD = 7'd54;
     BRANCH_IF_NOT_ZERO_HALFWORD = 7'd55;
-    BRANCH_IF_ZERO_WORD = 7'd56;
+    BRANCH_IF_ZERO_HALFWORD = 7'd56;
 
 //Single Precision FP MAC
     FLOATING_ADD = 7'd90;
