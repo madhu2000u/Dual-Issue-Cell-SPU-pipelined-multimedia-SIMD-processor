@@ -6,14 +6,18 @@ parameter HALFWORD = 16;
 parameter WORD = 32;
 parameter QUADWORD = 128;
 parameter IMM10 = 10;
+parameter IMM7 = 7;
 
 parameter UNIT_ID_SIZE = 3;
 parameter INTERNAL_OPCODE_SIZE = 7;
 
 parameter REG_COUNT=128;
-parameter REG_ADDR_WIDTH=$clog2(REG_COUNT); 
+parameter REG_ADDR_WIDTH=$clog2(REG_COUNT);
 
-`typedef enum logic [6:0] {
+parameter Smax = $bitstoshortreal(32'h7FFFFFFF);
+parameter Smin = $bitstoshortreal(32'h00800000);
+
+`typedef enum logic [0 : 6] {
 
 //Simple Fixed 1
     ADD_WORD = 7'd1;
@@ -78,6 +82,8 @@ parameter REG_ADDR_WIDTH=$clog2(REG_COUNT);
     BRANCH_IF_ZERO_WORD = 7'd56;
 
 //Single Precision FP MAC
+    FLOATING_ADD = 7'd90;
+    FLOATING_SUBTRACT = 7'd91;
     FLOATING_MULTIPLY_AND_ADD = 7'd57;
     FLOATING_NEGATIVE_MULTIPLY_AND_SUBSTRACT = 7'd58;
     FLOATING_MULTIPLY_AND_SUBTRACT = 7'd59;
