@@ -277,24 +277,24 @@ STORE_QUADWORD_D : begin
                    x0 = {imm10,4'b0};
                    y = {{18{x0[0]}},x0};
                    lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0;
-                   lsa_mem[lsa] = rt_wt_odd;
+                   lsa_mem[lsa] = rc_rd_odd;
                    // local store = RT
                    regWr_en_odd = 1'b0;
-                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd};
                    end     
 STORE_QUADWORD_X : begin
                     lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0;
                      //local store = RT
-                    lsa_mem[lsa] = rt_wt_odd;
+                    lsa_mem[lsa] = rc_rd_odd;
                     regWr_en_odd = 1'b0;
-                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd};
                   end  
 STORE_QUADWORD_A : begin
                    x1 = {imm16,2'b0};
                    lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0; 
-                   lsa_mem[lsa] = rt_wt_odd;
+                   lsa_mem[lsa] = rc_rd_odd;
                    regWr_en_odd = 1'b0;
-                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd};
                   end    
 
 //branch
