@@ -7,6 +7,7 @@ parameter WORD = 32;
 parameter QUADWORD = 128;
 parameter IMM10 = 10;
 parameter IMM7 = 7;
+parameter IMM16 = 16;
 
 parameter UNIT_ID_SIZE = 3;
 parameter INTERNAL_OPCODE_SIZE = 7;

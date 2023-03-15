@@ -8,203 +8,223 @@ Date: March 03, 2023
 module oddPipe (
     clk,
     reset,
+    unit_id,
     ra_rd_odd,
     rb_rd_odd,
     rc_rd_odd,
     rt_wt_odd,
-    addr_ra_rd_odd, 
-    addr_rb_rd_odd,
-    addr_rc_rd_odd,
     addr_rt_wt_odd,
     regWr_en_odd,
+    PC,
     opcode,
-    i7,
-    i10,
-    i16
+    imm7,
+    imm10,
+    imm16
     );
 input clk, reset;
-input [0:127] ra_rd_odd, rb_rd_odd, rc_rd_odd, rt_wt_odd;
-input [0:6] addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd, addr_rt_wr_odd;
-input [0:6] i7;
-input [0:9] i10;
-input [0:15] i16;
-logic [0:31] lsa, y;
+input [0 : UNIT_ID_SIZE - 1] unit_id;
+input [0 : INTERNAL_OPCODE_SIZE - 1] opcode;
+input signed [0:QUADWORD - 1] ra_rd_odd, rb_rd_odd, rc_rd_odd, rt_wt_odd;
+input [0:REG_ADDR_WIDTH-1] addr_rt_wr_odd;
+input [0:WORD-1] PC;
+input [0:IMM7-1] imm7;
+input [0:IMM10-1] imm10;
+input [0:IMM16-1] imm16;
+logic [0:WORD-1] lsa, y;
 logic [0:13] x0;
 logic [0:17] x1;
-logic [0:15]s;
-logic [0:7]s1;
+logic [0:HALFWORD-1]s0;
+logic [0:BYTE-1]s1;
 logic [0:3]s2; 
-logic [0:255]Rconcat;
-logic [0:7] b, c;// for bits shift value; later we can make a common s temp register with maximum bits possible
-logic [0:127] temp, temp1; //temperory registers
-always_comb begin : Odd_pipe_operations 
+logic [0:(2*QUADWORD)-1]Rconcat;
+logic [0:BYTE-1] b, c;// for bits shift value; later we can make a common s temp register with maximum bits possible
+logic [0:QUADWORD - 1] temp, temp1; //temperory registers
+logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD)-1] perm_stage1_result, perm_stage2_result, perm_stage3_result, ls_stage1_result, ls_stage2_result, ls_stage3_result, ls_stage4_result, ls_stage5_result, ls_stage6_result, branch_result;
+
+always_comb begin : oddPipeExecution 
+perm_stage1_result = 0;
+ls_stage1_result = 0;
+branch_result = 0;
 case(opcode) 
+//Permute
 SHIFT_LEFT_QUADWORD_BY_BITS : begin 
-                                s = rb_rd_odd[29:31] & 8'h07;
+                                s0 = rb_rd_odd[29:31] & 8'h07;
                                 for(int b=0; b<128; b++) 
                                 begin
-                                    if ((b+s) < 127)
-                                        temp[b] = ra_rd_odd[b+s];
+                                    if ((b+s0) < 128)
+                                        temp[b] = ra_rd_odd[b+s0];
                                     else
                                         temp[b] = 1'b0;
                                 end
                                 rt_wt_odd = temp;
-                                regWr_en_odd = 1; 
+                                regWr_en_odd = 1'b1;
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};  
                             end 
                               
 SHIFT_LEFT_QUADWORD_BY_BITS_IMMEDIATE: begin  
-                                s = i7 & 8'h07 ;
+                                s0 = imm7 & 8'h07;
                                 for(int b=0; b<128; b++) 
                                 begin
-                                    if ((b+s) < 127)
-                                        temp[b] = ra_rd_odd[b+s];
+                                    if ((b+s0) < 128)
+                                        temp[b] = ra_rd_odd[b+s0];
                                     else
                                         temp[b] = 1'b0;
                                 end
                                 rt_wt_odd = temp;
-                                regWr_en_odd = 1; 
+                                regWr_en_odd = 1'b1; 
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end   
                                                     
 SHIFT_LEFT_QUADWORD_BY_BYTES : begin 
-                                s = rb_rd_odd[29:31] & 8'h07;
+                                s0 = rb_rd_odd[29:31] & 8'h07;
                                 for(int b=0; b<16; b++) 
                                 begin
-                                    if ((b+s) < 16)
-                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8))+:8];
+                                    if ((b+s0) < 16)
+                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8))+:8];
                                     else
                                         temp[(8*b)+:8] = 8'b0;
                                 end
                                 rt_wt_odd = temp;
-                                regWr_en_odd = 1; 
+                                regWr_en_odd = 1'b1; 
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end 
                             
 SHIFT_LEFT_QUADWORD_BY_BYTES_IMMEDIATE : begin 
-                                s = i7 & 8'h1F ;
+                                s0 = imm7 & 8'h1F ;
                                 for(int b=0; b<16; b++) 
                                 begin
-                                    if ((b+s) < 16)
-                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8))+:8];
+                                    if ((b+s0) < 16)
+                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8))+:8];
                                     else
                                         temp[(8*b)+:8] = 8'b0;
                                 end
                                 rt_wt_odd = temp;
-                                regWr_en_odd = 1; 
+                                regWr_en_odd = 1'b1; 
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end 
                             
 SHIFT_LEFT_QUADWORD_BY_BYTES_FROM_BIT_SHIFT_COUNT :  begin 
-                                s = rb_rd_odd[24:28] & 8'h1F;
+                                s0 = rb_rd_odd[24:28] & 8'h1F;
                                 for(int b=0; b<16; b++) 
                                 begin
-                                    if ((b+s) < 16)
-                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8))+:8];
+                                    if ((b+s0) < 16)
+                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8))+:8];
                                     else
                                         temp[(8*b)+:8] = 8'b0;
                                 end
                                 rt_wt_odd = temp;
-                                regWr_en_odd = 1; 
+                                regWr_en_odd = 1'b1; 
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end  
                                  
 ROTATE_QUADWORD_BY_BYTES :   begin 
-                                s = rb_rd_odd[28:31] & 8'h0F;
+                                s0 = rb_rd_odd[28:31] & 8'h0F;
                                 for(int b=0; b<16; b++) 
                                 begin
-                                    if ((b+s) < 16)
-                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8))+:8];
+                                    if ((b+s0) < 16)
+                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8))+:8];
                                     else
-                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8)-(16*8))+:8];
+                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8)-(16*8))+:8];
                                 end
                                 rt_wt_odd = temp;
-                                regWr_en_odd = 1;
+                                regWr_en_odd = 1'b1;
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end 
                          
 ROTATE_QUADWORD_BY_BYTES_IMMEDIATE :  begin 
-                                        s = i7 & 8'h0F;
+                                        s0 = imm7 & 8'h0F;
                                         for(int b=0; b<16; b++) 
                                         begin
-                                            if ((b+s) < 16)
-                                                temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8))+:8];
+                                            if ((b+s0) < 16)
+                                                temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8))+:8];
                                             else
-                                                temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8)-(16*8))+:8];
+                                                temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8)-(16*8))+:8];
                                         end
                                         rt_wt_odd = temp;
-                                        regWr_en_odd = 1;
+                                        regWr_en_odd = 1'b1;
+                                        perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                                         end  
                                         
 ROTATE_QUADWORD_BY_BYTES_FROM_BIT_SHIFT_COUNT : begin 
-                                s = i7 & 8'h1F;
+                                s0 = imm7 & 8'h1F;
                                 for(int b=0; b<16; b++) 
                                 begin
-                                    if ((b+s) < 16)
-                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8))+:8];
+                                    if ((b+s0) < 16)
+                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8))+:8];
                                     else
-                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s*8)-(16*8))+:8];
+                                        temp[(8*b)+:8] = ra_rd_odd[((8*b)+(s0*8)-(16*8))+:8];
                                 end
                                 rt_wt_odd = temp;
-                                regWr_en_odd = 1;
+                                regWr_en_odd = 1'b1;
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                                 end 
 ROTATE_QUADWORD_BY_BITS :     begin 
-                                s = rb_rd_odd[29:31] & 8'h07;
+                                s0 = rb_rd_odd[29:31] & 8'h07;
                                 for(int b=0; b<128; b++) 
                                 begin
-                                    if ((b+s) < 127)
-                                        temp[b] = ra_rd_odd[b+s];
+                                    if ((b+s0) < 127)
+                                        temp[b] = ra_rd_odd[b+s0];
                                     else
-                                        temp[b] = ra_rd_odd[b+s-128];
+                                        temp[b] = ra_rd_odd[b+s0-128];
                                 end
                                 rt_wt_odd = temp;
-                                 regWr_en_odd = 1;
+                                regWr_en_odd = 1'b1;
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end     
 ROTATE_QUADWORD_BY_BITS_IMMEDIATE :  begin 
-                                s = i7 & 8'h07; 
+                                s0 = imm7 & 8'h07; 
                                 for(int b=0; b<128; b++) 
                                 begin
-                                    if ((b+s) < 127)
-                                        temp[b] = ra_rd_odd[b+s];
+                                    if ((b+s0) < 127)
+                                        temp[b] = ra_rd_odd[b+s0];
                                     else
-                                        temp[b] = ra_rd_odd[b+s-128];
+                                        temp[b] = ra_rd_odd[b+s0-128];
                                 end
                                 rt_wt_odd = temp;
-                                 regWr_en_odd = 1;
+                                regWr_en_odd = 1'b1;
+                                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end                                                       
 GATHER_BITS_FROM_BYTES : begin 
                         int k = 0;
-                        s = 16'b0;
+                        s0 = 16'b0;
                         for(int j = 7; j=128; j=j+8) begin
-                            s[k] = ra_rd_odd[j];
+                            s0[k] = ra_rd_odd[j];
                             k = k+1;
                         end
-                        rt_wt_odd[0:31] = {16'b0,s};
+                        rt_wt_odd[0:31] = {16'b0,s0};
                         rt_wt_odd[32:63] = 32'b0;
                         rt_wt_odd[64:95] = 32'b0;
                         rt_wt_odd[95:127] = 32'b0;
-                        regWr_en_odd = 1;
+                        regWr_en_odd = 1'b1;
+                        perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                         end
 GATHER_BITS_FROM_HALFWORD :  begin 
                         int k = 0;
                         s1 = 8'b0;
                         for(int j = 15; j=128; j=j+15) begin
-                            s[k] = ra_rd_odd[j];
+                            s1[k] = ra_rd_odd[j];
                             k = k+1;
                         end
-                        rt_wt_odd[0:31] = {24'b0,s};
+                        rt_wt_odd[0:31] = {24'b0,s1};
                         rt_wt_odd[32:63] = 32'b0;
                         rt_wt_odd[64:95] = 32'b0;
                         rt_wt_odd[95:127] = 32'b0;
-                        regWr_en_odd = 1;
+                        regWr_en_odd = 1'b1;
+                        perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end 
 GATHER_BITS_FROM_WORDS : begin
                         int k = 0;
                         s2 = 4'b0;
                         for(int j = 31; j=128; j=j+32) begin
-                            s[k] = ra_rd_odd[j];
+                            s2[k] = ra_rd_odd[j];
                             k = k+1;
                         end
-                        rt_wt_odd[0:31] = {32'b0,s};
+                        rt_wt_odd[0:31] = {32'b0,s2};
                         rt_wt_odd[32:63] = 32'b0;
                         rt_wt_odd[64:95] = 32'b0;
                         rt_wt_odd[95:127] = 32'b0;
-                        regWr_en_odd = 1;
-                        regWr_en_odd = 1;
+                        regWr_en_odd = 1'b1;
+                        perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                         end  
 SHUFFLE_BYTES : begin
                 Rconcat = {ra_rd_odd, rb_rd_odd};
@@ -225,95 +245,160 @@ SHUFFLE_BYTES : begin
                    end
                    rt_wt_odd[(8*j)+:8] = c;
                 end   
-                regWr_en_odd = 1;             
+                regWr_en_odd = 1'b1;
+                perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};             
                 end
+//Load & Store                
 LOAD_QUADWORD_D : begin
-                    x0 = {i10,4'b0};
+                    x0 = {imm10,4'b0};
                     y = {{18{x0[0]}},x0};
                     lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0;
+                    rt_wt_odd = lsa_mem[lsa];
                     //RT = localstore
-                    regWr_en_odd = 1;
+                    regWr_en_odd = 1'b1;
+                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                 end  
 LOAD_QUADWORD_X : begin
                     lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0;
+                    rt_wt_odd = lsa_mem[lsa];
                      //RT = localstore
-                     regWr_en_odd = 1;
+                     regWr_en_odd = 1'b1;
+                     ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                   end  
 LOAD_QUADWORD_A : begin
-                    x1 = {i16,2'b0};
+                    x1 = {imm16,2'b0};
                     lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0; 
+                    rt_wt_odd = lsa_mem[lsa];
                     //RT = localstore
-                    regWr_en_odd = 1;
+                    regWr_en_odd = 1'b1;
+                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                   end 
 STORE_QUADWORD_D : begin
-                   x0 = {i10,4'b0};
+                   x0 = {imm10,4'b0};
                    y = {{18{x0[0]}},x0};
                    lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0;
+                   lsa_mem[lsa] = rt_wt_odd;
                    // local store = RT
+                   regWr_en_odd = 1'b0;
+                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                    end     
 STORE_QUADWORD_X : begin
                     lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0;
                      //local store = RT
+                    lsa_mem[lsa] = rt_wt_odd;
+                    regWr_en_odd = 1'b0;
+                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                   end  
 STORE_QUADWORD_A : begin
-                   x1 = {i16,2'b0};
+                   x1 = {imm16,2'b0};
                    lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0; 
-                    //local store = RT
+                   lsa_mem[lsa] = rt_wt_odd;
+                   regWr_en_odd = 1'b0;
+                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                   end    
+
+//branch
 BRANCH_RELATIVE : begin
-                  x1 = {i16,2'b0};
+                  x1 = {imm16,2'b0};
                   PC = PC + ({{14{x1[0]}},x1});
+                  regWr_en_odd = 1'b0;
+                  branch_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                   end
 BRANCH_ABSOLUTE : begin
-                  x1 = {i16,2'b0};
+                  x1 = {imm16,2'b0};
                   PC = ({{14{x1[0]}},x1});
+                  regWr_en_odd = 1'b0;
+                  branch_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                   end 
 BRANCH_RELATIVE_AND_SET_LINK : begin
                   rt_wt_odd[0:31] = PC + 4;
                   rt_wt_odd[32:127] = 96'd0;
-                  x1 = {i16,2'b0};
+                  x1 = {imm16,2'b0};
                   PC = PC + ({{14{x1[0]}},x1});
+                  regWr_en_odd = 1'b1;
+                  branch_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                   end
 BRANCH_ABSOLUTE_AND_SET_LINK :  begin  
                                 rt_wt_odd[0:31] = PC + 4;
                                 rt_wt_odd[32:127] = 96'd0;  
-                                x1 = {i16,2'b0};
-                                PC = ({{14{x1[0]}},x1});                                 
+                                x1 = {imm16,2'b0};
+                                PC = ({{14{x1[0]}},x1});  
+                                regWr_en_odd = 1'b1;   
+                                branch_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};                             
                                 end 
 BRANCH_IF_NOT_ZERO_WORD : begin 
                           if (rt_wt_odd[0:31] != 0) begin
-                                x1 = {i16,2'b0};
+                                x1 = {imm16,2'b0};
                                 PC = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
                           end   
                           else
                                 PC = PC + 4;
+                            regWr_en_odd = 1'b0;  
+                            branch_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};   
                           end 
 BRANCH_IF_ZERO_WORD : begin
                       if (rt_wt_odd[0:31] == 0) begin
-                                x1 = {i16,2'b0};
+                                x1 = {imm16,2'b0};
                                 PC = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
                           end   
                           else
                                 PC = PC + 4;
+                            regWr_en_odd = 1'b0;  
+                            branch_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};   
 end    
 BRANCH_IF_NOT_ZERO_HALFWORD : begin
                                 if (rt_wt_odd[16:31] != 0) begin
-                                    x1 = {i16,2'b0};
+                                    x1 = {imm16,2'b0};
                                     PC = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
                                 end   
                                 else
                                     PC = PC + 4;
+                                regWr_en_odd = 1'b0;    
+                                branch_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                               end                                                                          
 BRANCH_IF_ZERO_HALFWORD : begin
                             if (rt_wt_odd[16:31] == 0) begin
-                                x1 = {i16,2'b0};
+                                x1 = {imm16,2'b0};
                                 PC = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
                                 end   
                             else
                                 PC = PC + 4;
-                              end                        
-
+                            regWr_en_odd = 1'b0; 
+                            branch_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};   
+                              end 
+LNOP : begin
+    regWr_en_odd = 1'b0;
+end   
 endcase
+
+always_ff @( posedge clk ) begin : oddPipeExecution
+    if(reset) begin
+    perm_stage1_result <= 0;
+    perm_stage2_result <= 0;
+    perm_stage3_result <= 0;
+    ls_stage1_result <= 0;
+    ls_stage2_result <= 0;
+    ls_stage3_result <= 0;
+    ls_stage4_result <= 0;
+    ls_stage5_result <= 0; 
+    ls_stage6_result <= 0;   
+    branch_result <= 0;    
+    end
+
+    else begin
+//Permute
+    perm_stage2_result <= perm_stage1_result;
+    perm_stage3_result <= perm_stage2_result;  
+
+//Load & Store   
+    ls_stage2_result <=  ls_stage1_result; 
+    ls_stage3_result <=  ls_stage2_result;
+    ls_stage4_result <=  ls_stage3_result;  
+    ls_stage5_result <=  ls_stage4_result;  
+    ls_stage6_result <=  ls_stage5_result;
+    end
+
+end
 end
 
 endmodule
