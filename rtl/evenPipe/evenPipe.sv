@@ -694,6 +694,8 @@ module evenPipe (
                     end
                     NOP: begin
                         regWr_en_even = 0;
+                        rt_wt_even = 0;
+                        fx1_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                     end
                 default: begin
                     regWr_en_even = 0;

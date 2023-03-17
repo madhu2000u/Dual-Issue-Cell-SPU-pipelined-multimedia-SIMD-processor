@@ -5,6 +5,8 @@ Suvarna Tirur Ananthanarayanan - 115012264
 Date: March 03, 2023
 */
 
+`include "LocalStore.sv"
+
 module oddPipe (
     clk,
     reset,
@@ -12,25 +14,27 @@ module oddPipe (
     ra_rd_odd,
     rb_rd_odd,
     rc_rd_odd,
-    rt_wt_odd,
     addr_rt_wt_odd,
-    regWr_en_odd,
-    PC,
+    /*regWr_en_odd,*/
     opcode,
     imm7,
     imm10,
-    imm16
+    imm16,
+    perm_stage3_result, 
+    ls_stage6_result
     );
 input clk, reset;
 input [0 : UNIT_ID_SIZE - 1] unit_id;
 input [0 : INTERNAL_OPCODE_SIZE - 1] opcode;
-input signed [0:QUADWORD - 1] ra_rd_odd, rb_rd_odd, rc_rd_odd, rt_wt_odd;
-input [0:REG_ADDR_WIDTH-1] addr_rt_wr_odd;
-input [0:WORD-1] PC;
+input signed [0:QUADWORD - 1] ra_rd_odd, rb_rd_odd, rc_rd_odd;
+input [0:REG_ADDR_WIDTH-1] addr_rt_wt_odd;
 input [0:IMM7-1] imm7;
 input [0:IMM10-1] imm10;
 input [0:IMM16-1] imm16;
-logic [0:WORD-1] lsa, y;
+
+logic regWr_en_odd, ls_wr_en;
+logic [0:WORD-1] PC;
+logic [0:WORD-1] lsa, y;        //lsa <=> ls_addr
 logic [0:13] x0;
 logic [0:17] x1;
 logic [0:HALFWORD-1]s0;
@@ -39,12 +43,19 @@ logic [0:3]s2;
 logic [0:(2*QUADWORD)-1]Rconcat;
 logic [0:BYTE-1] b, c;// for bits shift value; later we can make a common s temp register with maximum bits possible
 logic [0:QUADWORD - 1] temp, temp1; //temperory registers
-logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD)-1] perm_stage1_result, perm_stage2_result, perm_stage3_result, ls_stage1_result, ls_stage2_result, ls_stage3_result, ls_stage4_result, ls_stage5_result, ls_stage6_result, branch_result;
+logic [0 : QUADWORD - 1] ls_data_rd, rt_wt_odd;
+logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD)-1] perm_stage1_result, perm_stage2_result;
+logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD /*+ WORD + 1*/)-1] ls_stage1_result, ls_stage2_result, ls_stage3_result, ls_stage4_result, ls_stage5_result, branch_result;
+
+output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD)-1] perm_stage3_result, ls_stage6_result;
+//output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD + WORD + 1)-1] ls_stage6_result;
 
 always_comb begin : oddPipeExecution 
 perm_stage1_result = 0;
 ls_stage1_result = 0;
 branch_result = 0;
+ls_wr_en = 0;
+
 case(opcode) 
 //Permute
 SHIFT_LEFT_QUADWORD_BY_BITS : begin 
@@ -185,9 +196,9 @@ ROTATE_QUADWORD_BY_BITS_IMMEDIATE :  begin
                                 perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end                                                       
 GATHER_BITS_FROM_BYTES : begin 
-                        int k = 0;
+                        //int k = 0;
                         s0 = 16'b0;
-                        for(int j = 7; j=128; j=j+8) begin
+                        for(int j = 7, int k = 0; j==128; j=j+8) begin
                             s0[k] = ra_rd_odd[j];
                             k = k+1;
                         end
@@ -199,9 +210,9 @@ GATHER_BITS_FROM_BYTES : begin
                         perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                         end
 GATHER_BITS_FROM_HALFWORD :  begin 
-                        int k = 0;
+                        //int k = 0;
                         s1 = 8'b0;
-                        for(int j = 15; j=128; j=j+15) begin
+                        for(int j = 15, int k = 0; j==128; j=j+15) begin
                             s1[k] = ra_rd_odd[j];
                             k = k+1;
                         end
@@ -213,9 +224,9 @@ GATHER_BITS_FROM_HALFWORD :  begin
                         perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                             end 
 GATHER_BITS_FROM_WORDS : begin
-                        int k = 0;
+                        //int k = 0;
                         s2 = 4'b0;
-                        for(int j = 31; j=128; j=j+32) begin
+                        for(int j = 31, int k = 0; j==128; j=j+32) begin
                             s2[k] = ra_rd_odd[j];
                             k = k+1;
                         end
@@ -229,7 +240,7 @@ GATHER_BITS_FROM_WORDS : begin
 SHUFFLE_BYTES : begin
                 Rconcat = {ra_rd_odd, rb_rd_odd};
                 for(int j = 0; j<16; j++) begin
-                   b = rc_rd_odd[(8*j)+:8]
+                   b = rc_rd_odd[(8*j)+:8];
                    if(b[0:1]==2'b10) begin
                         c = 8'h0;
                    end
@@ -253,14 +264,14 @@ LOAD_QUADWORD_D : begin
                     x0 = {imm10,4'b0};
                     y = {{18{x0[0]}},x0};
                     lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0;
-                    rt_wt_odd = lsa_mem[lsa];
+                    rt_wt_odd = ls_data_rd;
                     //RT = localstore
                     regWr_en_odd = 1'b1;
                     ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                 end  
 LOAD_QUADWORD_X : begin
                     lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0;
-                    rt_wt_odd = lsa_mem[lsa];
+                    rt_wt_odd = ls_data_rd;
                      //RT = localstore
                      regWr_en_odd = 1'b1;
                      ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
@@ -268,7 +279,7 @@ LOAD_QUADWORD_X : begin
 LOAD_QUADWORD_A : begin
                     x1 = {imm16,2'b0};
                     lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0; 
-                    rt_wt_odd = lsa_mem[lsa];
+                    rt_wt_odd = ls_data_rd;
                     //RT = localstore
                     regWr_en_odd = 1'b1;
                     ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
@@ -277,24 +288,27 @@ STORE_QUADWORD_D : begin
                    x0 = {imm10,4'b0};
                    y = {{18{x0[0]}},x0};
                    lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0;
-                   lsa_mem[lsa] = rc_rd_odd;
+                   //lsa_mem[lsa] = rc_rd_odd;
                    // local store = RT
                    regWr_en_odd = 1'b0;
-                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd};
+                   ls_wr_en = 1;
+                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd}; // lsa, ls_wr_en};
                    end     
 STORE_QUADWORD_X : begin
                     lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0;
-                     //local store = RT
-                    lsa_mem[lsa] = rc_rd_odd;
+                    //local store = RT
+                    ///lsa_mem[lsa] = rc_rd_odd;
                     regWr_en_odd = 1'b0;
-                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd};
+                    ls_wr_en = 1;
+                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd}; // lsa, ls_wr_en};
                   end  
 STORE_QUADWORD_A : begin
                    x1 = {imm16,2'b0};
                    lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0; 
-                   lsa_mem[lsa] = rc_rd_odd;
+                   //lsa_mem[lsa] = rc_rd_odd;
                    regWr_en_odd = 1'b0;
-                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd};
+                   ls_wr_en = 1;
+                   ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd}; // lsa, ls_wr_en};
                   end    
 
 //branch
@@ -368,21 +382,25 @@ BRANCH_IF_ZERO_HALFWORD : begin
                               end 
 LNOP : begin
     regWr_en_odd = 1'b0;
+    ls_wr_en = 1'b0;
+    perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
 end   
 endcase
+end
 
-always_ff @( posedge clk ) begin : oddPipeExecution
+
+always_ff @ ( posedge clk ) begin : oddPipeExecutionStages
     if(reset) begin
-    perm_stage1_result <= 0;
-    perm_stage2_result <= 0;
-    perm_stage3_result <= 0;
-    ls_stage1_result <= 0;
-    ls_stage2_result <= 0;
-    ls_stage3_result <= 0;
-    ls_stage4_result <= 0;
-    ls_stage5_result <= 0; 
-    ls_stage6_result <= 0;   
-    branch_result <= 0;    
+        //perm_stage1_result <= 0;
+        perm_stage2_result <= 0;
+        perm_stage3_result <= 0;
+        //ls_stage1_result <= 0;
+        ls_stage2_result <= 0;
+        ls_stage3_result <= 0;
+        ls_stage4_result <= 0;
+        ls_stage5_result <= 0; 
+        ls_stage6_result <= 0;   
+        //branch_result <= 0;    
     end
 
     else begin
@@ -399,6 +417,7 @@ always_ff @( posedge clk ) begin : oddPipeExecution
     end
 
 end
-end
+
+LocalStore ls (clk, reset, lsa, rc_rd_odd, ls_data_rd, ls_wr_en); // ls_stage6_result[139 +: WORD], ls_stage6_result[UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH +: QUADWORD], ls_data_rd, ls_stage6_result[139 + WORD]);
 
 endmodule
