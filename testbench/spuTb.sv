@@ -6,9 +6,10 @@ module spuTb ();
     logic [0 : UNIT_ID_SIZE - 1]            unit_id;
     logic [0 : INTERNAL_OPCODE_SIZE - 1]    opcode_even, opcode_odd;
     logic [0 : REG_ADDR_WIDTH - 1]          addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd;
-    logic [0 : IMM7 - 1]                    imm7;
-    logic [0 : IMM10 - 1]                   imm10;
-    logic [0 : IMM16 - 1]                   imm16;
+    logic [0 : IMM7 - 1]                    imm7_even, imm7_odd;
+    logic [0 : IMM10 - 1]                   imm10_even, imm10_odd;
+    logic [0 : IMM16 - 1]                   imm16_odd;
+    logic [0 : IMM18 - 1]                   imm18_odd;
     logic [0 : REG_ADDR_WIDTH - 1]          addr_rt_wt_even, addr_rt_wt_odd;
     logic [0 : QUADWORD - 1]                rt_wt_even, rt_wt_odd;
     logic                                   regWr_en_even, regWr_en_odd;
@@ -32,9 +33,12 @@ module spuTb ();
     addr_rb_rd_odd,
     addr_rc_rd_odd,
     addr_rt_wt_odd,
-    imm7,
-    imm10,
-    imm16,
+    imm7_even,
+    imm7_odd,
+    imm10_even,
+    imm10_odd,
+    imm16_odd,
+    imm18_odd,
     init,
     init2);
 
@@ -86,24 +90,38 @@ module spuTb ();
         opcode_even = ADD_WORD_IMMEDIATE;
         addr_ra_rd_even = 0;
         addr_rt_wt_even = 7'd1;
-        imm10 = 10'd5;
+        imm10_even = 10'd5;
+        // @(posedge clk);
+        // opcode_even = ADD_WORD_IMMEDIATE;
+        // addr_ra_rd_even = 1;
+        // addr_rt_wt_even = 7'd2;
+        // imm10_even = 10'd3;
         @(posedge clk);
+        repeat(9) begin
+            opcode_even = NOP;
+            unit_id = 0;
+            addr_rt_wt_even = 0;
+            @(posedge clk);
+        end
         opcode_even = ADD_WORD_IMMEDIATE;
         addr_ra_rd_even = 1;
         addr_rt_wt_even = 7'd2;
-        imm10 = 10'd3;
+        imm10_even = 10'd4;
+        @(posedge clk);
+        repeat(3) begin
+            opcode_even = NOP;
+            unit_id = 0;
+            addr_rt_wt_even = 0;
+            @(posedge clk);
+        end
+        opcode_even = ADD_WORD;
+        addr_ra_rd_even = 2;
+        addr_rb_rd_even = 1;
+        addr_rt_wt_even = 7'd3;
         @(posedge clk);
         opcode_even = NOP;
         unit_id = 0;
         addr_rt_wt_even = 0;
-        repeat(9) begin
-            @(posedge clk);
-        end
-        opcode_even = ADD_WORD;
-        addr_ra_rd_even = 1;
-        addr_rb_rd_even = 2;
-        addr_rt_wt_even = 7'd3;
-        imm10 = 10'd3;
         repeat(9) begin
             @(posedge clk);
         end
@@ -112,7 +130,7 @@ module spuTb ();
         addr_rt_wt_even = 0;
 
         opcode_odd = STORE_QUADWORD_D;
-        imm10 = 10;
+        imm10_odd = 10;
         addr_ra_rd_odd = 2;
         addr_rc_rd_odd = 3;
         @(posedge clk);
@@ -122,19 +140,34 @@ module spuTb ();
         addr_rc_rd_odd = 1; 
         @(posedge clk);
         opcode_odd = STORE_QUADWORD_A;
-        imm16 = 10;
+        imm16_odd = 10;
         addr_rc_rd_odd = 2;
         @(posedge clk);
         // repeat(5) begin
         //     @(posedge clk);
         // end
         opcode_odd = LOAD_QUADWORD_D;
-        imm10 = 10;
+        imm10_odd = 10;
         addr_ra_rd_odd = 2;
         addr_rt_wt_odd = 5;
         @(posedge clk);
-        opcode_odd = LNOP;
-        repeat(20) begin
+        opcode_odd = LNOP; addr_rt_wt_odd = 0;
+        repeat(3) begin
+            @(posedge clk);
+        end
+
+        opcode_even = NOP; unit_id = 0; addr_rt_wt_even = 0; opcode_odd = ROTATE_QUADWORD_BY_BYTES_IMMEDIATE; addr_ra_rd_odd = 2; addr_rt_wt_odd = 12; imm7_odd = 2;
+        @(posedge clk);
+        opcode_odd = LNOP; unit_id = 0; addr_rt_wt_odd = 0;
+        repeat(3) begin
+            @(posedge clk);
+        end
+        opcode_even = SHIFT_LEFT_WORD; addr_ra_rd_even = 12; addr_rb_rd_even = 1; addr_rt_wt_even = 10;
+        @(posedge clk);
+        repeat(9) begin
+            opcode_even = NOP;
+            unit_id = 0;
+            addr_rt_wt_even = 0;
             @(posedge clk);
         end
 
