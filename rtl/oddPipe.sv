@@ -20,6 +20,7 @@ module oddPipe (
     imm7,
     imm10,
     imm16,
+    imm18,
     perm_stage3_result, 
     ls_stage6_result
     );
@@ -31,6 +32,7 @@ input [0:REG_ADDR_WIDTH-1] addr_rt_wt_odd;
 input [0:IMM7-1] imm7;
 input [0:IMM10-1] imm10;
 input [0:IMM16-1] imm16;
+input [0:IMM18-1] imm18;
 
 logic regWr_en_odd, ls_wr_en;
 logic [0:WORD-1] PC;
@@ -284,6 +286,31 @@ LOAD_QUADWORD_A : begin
                     regWr_en_odd = 1'b1;
                     ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                   end 
+IMMEDIATE_LOAD_HALFWORD : begin
+                    s0 = imm16;
+                    for (int i = 0 ; i<8 ; i++) begin
+                        rt_wt_odd[16*i +:16] = s0;
+                    end
+                    //RT = localstore
+                    regWr_en_odd = 1'b1;
+                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                  end 
+IMMEDIATE_LOAD_WORD : begin
+                    y = {{16{imm16[0]}},imm16};
+                    for (int i = 0 ; i<4 ; i++) begin
+                        rt_wt_odd[32*i +:32] = y;
+                    end
+                    regWr_en_odd = 1'b1;
+                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                  end                  
+IMMEDIATE_LOAD_ADDRESS : begin
+                    y = {14'b0,imm18};
+                    for (int i = 0 ; i<4 ; i++) begin
+                        rt_wt_odd[32*i +:32] = y;
+                    end
+                    regWr_en_odd = 1'b1;
+                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                    end
 STORE_QUADWORD_D : begin
                    x0 = {imm10,4'b0};
                    y = {{18{x0[0]}},x0};
@@ -384,7 +411,13 @@ LNOP : begin
     regWr_en_odd = 1'b0;
     ls_wr_en = 1'b0;
     perm_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
-end   
+end
+default : begin
+    regWr_en_odd = 0;
+    ls_wr_en = 0;
+    perm_stage1_result = 0;
+    ls_stage1_result = 0;
+end
 endcase
 end
 
