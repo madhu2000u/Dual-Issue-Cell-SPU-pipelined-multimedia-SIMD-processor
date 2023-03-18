@@ -73,12 +73,7 @@ module registerFile (
     //     //@(posedge clk);
     // end
 
-    assign ra_rd_even = registerFile[addr_ra_rd_even];
-    assign rb_rd_even = registerFile[addr_rb_rd_even];
-    assign rc_rd_even = registerFile[addr_rc_rd_even];
-    assign ra_rd_odd = registerFile[addr_ra_rd_odd];
-    assign rb_rd_odd = registerFile[addr_rb_rd_odd];
-    assign rc_rd_odd = registerFile[addr_rc_rd_odd];
+    
 
     always_ff @( posedge clk ) begin : registerFileWriteLogic
         if(reset) begin
@@ -86,6 +81,13 @@ module registerFile (
                 registerFile[i] <= 0;
             end
         end
+
+        ra_rd_even <= registerFile[addr_ra_rd_even];
+        rb_rd_even <= registerFile[addr_rb_rd_even];
+        rc_rd_even <= registerFile[addr_rc_rd_even];
+        ra_rd_odd <= registerFile[addr_ra_rd_odd];
+        rb_rd_odd <= registerFile[addr_rb_rd_odd];
+        rc_rd_odd <= registerFile[addr_rc_rd_odd];
         
         if(regWr_en_even)
             registerFile[addr_rt_wt_even] <= rt_wt_even;

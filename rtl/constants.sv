@@ -8,6 +8,8 @@ parameter QUADWORD = 128;
 parameter IMM10 = 10;
 parameter IMM7 = 7;
 parameter IMM16 = 16;
+parameter IMM18 = 18;
+
 
 parameter UNIT_ID_SIZE = 3;
 parameter INTERNAL_OPCODE_SIZE = 7;
@@ -127,6 +129,10 @@ typedef enum logic [0 : 6] {
     STORE_QUADWORD_D = 7'd87,
     STORE_QUADWORD_X = 7'd88,
     STORE_QUADWORD_A = 7'd89,
+    IMMEDIATE_LOAD_HALFWORD = 7'd94,
+    IMMEDIATE_LOAD_WORD = 7'd95,
+    IMMEDIATE_LOAD_ADDRESS = 7'd96,
+
 
 //Misc Instrs
     NOP = 7'd92,

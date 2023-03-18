@@ -428,9 +428,9 @@ module evenPipe (
                         fx2_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                     end
                     SHIFT_LEFT_WORD_IMMEDIATE: begin
-                        if(imm7[2 : 6] <= 15) begin
+                        if(imm7[1 : 6] <= 15) begin
                             for (int i = 0; i <= 7; i++) begin
-                                rt_wt_even[HALFWORD * i +: HALFWORD] = ra_rd_even[HALFWORD * i +: HALFWORD] << imm7[2 : 6];         //behavioural description of system verilog
+                                rt_wt_even[HALFWORD * i +: HALFWORD] = ra_rd_even[HALFWORD * i +: HALFWORD] << imm7[1 : 6];         //behavioural description of system verilog
                             end
                         end
                         else begin
@@ -442,7 +442,7 @@ module evenPipe (
                     SHIFT_LEFT_WORD: begin
                         for (int i = 0; i <= 3; i++) begin
                                 if(rb_rd_even[(WORD * i) + 26 +: 6] <= 31)        //bits 26 to 31 of each of the four word slots of the 128-bit register RB
-                                    rt_wt_even[WORD * i +: WORD] = ra_rd_even[WORD * i +: WORD] << imm7[2 : 6];
+                                    rt_wt_even[WORD * i +: WORD] = ra_rd_even[WORD * i +: WORD] << rb_rd_even[(WORD * i) + 26 +: 6];
                                 else
                                     rt_wt_even[WORD * i +: WORD] = 0;
                         end
