@@ -169,7 +169,7 @@ ROTATE_QUADWORD_BY_BYTES_IMMEDIATE :  begin
                                         end  
                                         
 ROTATE_QUADWORD_BY_BYTES_FROM_BIT_SHIFT_COUNT : begin 
-                                s0 = imm7 & 8'h1F;
+                                s0 = rb_rd_odd[24:28];
                                 for(int b=0; b<16; b++) 
                                 begin
                                     if ((b+s0) < 16)
@@ -185,7 +185,7 @@ ROTATE_QUADWORD_BY_BITS :     begin
                                 s0 = rb_rd_odd[29:31] & 8'h07;
                                 for(int b=0; b<128; b++) 
                                 begin
-                                    if ((b+s0) < 127)
+                                    if ((b+s0) < 128)
                                         temp[b] = ra_rd_odd[b+s0];
                                     else
                                         temp[b] = ra_rd_odd[b+s0-128];
@@ -198,7 +198,7 @@ ROTATE_QUADWORD_BY_BITS_IMMEDIATE :  begin
                                 s0 = imm7 & 8'h07; 
                                 for(int b=0; b<128; b++) 
                                 begin
-                                    if ((b+s0) < 127)
+                                    if ((b+s0) < 128)
                                         temp[b] = ra_rd_odd[b+s0];
                                     else
                                         temp[b] = ra_rd_odd[b+s0-128];
@@ -210,7 +210,7 @@ ROTATE_QUADWORD_BY_BITS_IMMEDIATE :  begin
 GATHER_BITS_FROM_BYTES : begin 
                         //int k = 0;
                         s0 = 16'b0;
-                        for(int j = 7, int k = 0; j==128; j=j+8) begin
+                        for(int j = 7, int k = 0; j<128; j=j+8) begin
                             s0[k] = ra_rd_odd[j];
                             k = k+1;
                         end
@@ -224,7 +224,7 @@ GATHER_BITS_FROM_BYTES : begin
 GATHER_BITS_FROM_HALFWORD :  begin 
                         //int k = 0;
                         s1 = 8'b0;
-                        for(int j = 15, int k = 0; j==128; j=j+15) begin
+                        for(int j = 15, int k = 0; j<128; j=j+15) begin
                             s1[k] = ra_rd_odd[j];
                             k = k+1;
                         end
@@ -238,7 +238,7 @@ GATHER_BITS_FROM_HALFWORD :  begin
 GATHER_BITS_FROM_WORDS : begin
                         //int k = 0;
                         s2 = 4'b0;
-                        for(int j = 31, int k = 0; j==128; j=j+32) begin
+                        for(int j = 31, int k = 0; j<128; j=j+32) begin
                             s2[k] = ra_rd_odd[j];
                             k = k+1;
                         end
@@ -275,14 +275,14 @@ SHUFFLE_BYTES : begin
 LOAD_QUADWORD_D : begin
                     x0 = {imm10,4'b0};
                     y = {{18{x0[0]}},x0};
-                    lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0;
+                    lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0 & LSLR;
                     rt_wt_odd = ls_data_rd;
                     //RT = localstore
                     regWr_en_odd = 1'b1;
                     ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                 end  
 LOAD_QUADWORD_X : begin
-                    lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0;
+                    lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0 & LSLR;
                     rt_wt_odd = ls_data_rd;
                      //RT = localstore
                      regWr_en_odd = 1'b1;
@@ -290,7 +290,7 @@ LOAD_QUADWORD_X : begin
                   end  
 LOAD_QUADWORD_A : begin
                     x1 = {imm16,2'b0};
-                    lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0; 
+                    lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0 & LSLR; 
                     rt_wt_odd = ls_data_rd;
                     //RT = localstore
                     regWr_en_odd = 1'b1;
@@ -324,7 +324,7 @@ IMMEDIATE_LOAD_ADDRESS : begin
 STORE_QUADWORD_D : begin
                    x0 = {imm10,4'b0};
                    y = {{18{x0[0]}},x0};
-                   lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0;
+                   lsa = (y + ra_rd_odd[0:31]) & 32'hFFFFFFF0 & LSLR;
                    //lsa_mem[lsa] = rc_rd_odd;
                    // local store = RT
                    regWr_en_odd = 1'b0;
@@ -332,7 +332,7 @@ STORE_QUADWORD_D : begin
                    ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rc_rd_odd}; // lsa, ls_wr_en};
                    end     
 STORE_QUADWORD_X : begin
-                    lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0;
+                    lsa = (ra_rd_odd[0:31] + rb_rd_odd[0:31]) & 32'hFFFFFFF0 & LSLR;
                     //local store = RT
                     ///lsa_mem[lsa] = rc_rd_odd;
                     regWr_en_odd = 1'b0;
@@ -341,7 +341,7 @@ STORE_QUADWORD_X : begin
                   end  
 STORE_QUADWORD_A : begin
                    x1 = {imm16,2'b0};
-                   lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0; 
+                   lsa =  ({{14{x1[0]}},x1}) & 32'hFFFFFFF0 & LSLR; 
                    //lsa_mem[lsa] = rc_rd_odd;
                    regWr_en_odd = 1'b0;
                    ls_wr_en = 1;
@@ -366,7 +366,7 @@ BRANCH_ABSOLUTE : begin
                   branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                   end 
 BRANCH_RELATIVE_AND_SET_LINK : begin
-                  rt_wt_odd[0:31] = PC + 4;
+                  rt_wt_odd[0:31] = (PC_in + 4) & LSLR;
                   rt_wt_odd[32:127] = 96'd0;
                   x1 = {imm16,2'b0};
                   PC_out = PC + $signed(({{14{x1[0]}},x1}));
@@ -376,7 +376,7 @@ BRANCH_RELATIVE_AND_SET_LINK : begin
                   branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                   end
 BRANCH_ABSOLUTE_AND_SET_LINK :  begin  
-                                rt_wt_odd[0:31] = PC + 4;
+                                rt_wt_odd[0:31] = (PC_in + 4) & LSLR;
                                 rt_wt_odd[32:127] = 96'd0;  
                                 x1 = {imm16,2'b0};
                                 PC_out = ({{14{x1[0]}},x1});  

@@ -20,6 +20,7 @@ parameter REG_ADDR_WIDTH=$clog2(REG_COUNT);
 parameter Smax = $bitstoshortreal(32'h7FFFFFFF);
 parameter Smin = $bitstoshortreal(32'h00800000);
 
+parameter LSLR = 32'h00007FFF;
 
 typedef enum logic [0 : 6] {
 

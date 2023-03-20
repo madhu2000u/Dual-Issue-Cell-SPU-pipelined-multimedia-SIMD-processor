@@ -572,96 +572,94 @@ module evenPipe (
                         end
 
                         //Single Precision Floating Point Unit
-                        FLOATING_ADD: begin
-                            for (int i = 0; i <= 3; i++) begin
-                                fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) + $bitstoshortreal(rb_rd_even[WORD * i +: WORD]);
-                                if(fp_temp < - Smax)
-                                    rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
-                                else if(fp_temp > Smax)
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
-                                else if(fp_temp < Smin)
-                                    rt_wt_even[WORD * i +: WORD] = 0;
-                                else
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
-                            end
-                            regWr_en_even = 1;
-                            sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                    FLOATING_ADD: begin
+                        for (int i = 0; i <= 3; i++) begin
+                            fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) + $bitstoshortreal(rb_rd_even[WORD * i +: WORD]);
+                            if(fp_temp < - Smax)
+                                rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
+                            else if(fp_temp > Smax)
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
+                            else if((fp_temp>-Smin)&&(fp_temp<Smin))
+                                rt_wt_even[WORD * i +: WORD] = 0;
+                            else
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
                         end
-                        FLOATING_SUBTRACT: begin
-                            for (int i = 0; i <= 3; i++) begin
-                                fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) - $bitstoshortreal(rb_rd_even[WORD * i +: WORD]);
-                                if(fp_temp < - Smax)
-                                    rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
-                                else if(fp_temp > Smax)
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
-                                else if(fp_temp < Smin)
-                                    rt_wt_even[WORD * i +: WORD] = 0;
-                                else
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
-                            end
-                            regWr_en_even = 1;
-                            sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                        regWr_en_even = 1;
+                        sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                    end
+                    FLOATING_SUBTRACT: begin
+                        for (int i = 0; i <= 3; i++) begin
+                            fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) - $bitstoshortreal(rb_rd_even[WORD * i +: WORD]);
+                            if(fp_temp < - Smax)
+                                rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
+                            else if(fp_temp > Smax)
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
+                            else if((fp_temp>-Smin)&&(fp_temp<Smin))
+                                rt_wt_even[WORD * i +: WORD] = 0;
+                            else
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
                         end
-                        FLOATING_MULTIPLY_AND_ADD: begin
-                            for (int i = 0; i <= 3; i++) begin
-                                fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) * $bitstoshortreal(rb_rd_even[WORD * i +: WORD]) + $bitstoshortreal(rc_rd_even[WORD * i +: WORD]);
-                                if(fp_temp < - Smax)
-                                    rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
-                                else if(fp_temp > Smax)
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
-                                else if(fp_temp < Smin)
-                                    rt_wt_even[WORD * i +: WORD] = 0;
-                                else
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
-                            end
-                            regWr_en_even = 1;
-                            sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                        regWr_en_even = 1;
+                        sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                    end
+                    FLOATING_MULTIPLY_AND_ADD: begin
+                        for (int i = 0; i <= 3; i++) begin
+                            fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) * $bitstoshortreal(rb_rd_even[WORD * i +: WORD]) + $bitstoshortreal(rc_rd_even[WORD * i +: WORD]);
+                            if(fp_temp < - Smax)
+                                rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
+                            else if(fp_temp > Smax)
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
+                            else if((fp_temp>-Smin)&&(fp_temp<Smin))
+                                rt_wt_even[WORD * i +: WORD] = 0;
+                            else
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
                         end
-                        FLOATING_NEGATIVE_MULTIPLY_AND_SUBSTRACT: begin
-                            for (int i = 0; i <= 3; i++) begin
-                                fp_temp = $bitstoshortreal(rc_rd_even[WORD * i +: WORD]) - ($bitstoshortreal(ra_rd_even[WORD * i +: WORD]) * $bitstoshortreal(rb_rd_even[WORD * i +: WORD]));
-                                if(fp_temp < - Smax)
-                                    rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
-                                else if(fp_temp > Smax)
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
-                                else if(fp_temp < Smin)
-                                    rt_wt_even[WORD * i +: WORD] = 0;
-                                else
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
-                            end
-                            regWr_en_even = 1;
-                            sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                        regWr_en_even = 1;
+                        sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                    end
+                    FLOATING_NEGATIVE_MULTIPLY_AND_SUBSTRACT: begin
+                        for (int i = 0; i <= 3; i++) begin
+                            fp_temp = $bitstoshortreal(rc_rd_even[WORD * i +: WORD]) - ($bitstoshortreal(ra_rd_even[WORD * i +: WORD]) * $bitstoshortreal(rb_rd_even[WORD * i +: WORD]));
+                            if(fp_temp < - Smax)
+                                rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
+                            else if(fp_temp > Smax)
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
+                            else if((fp_temp>-Smin)&&(fp_temp<Smin))
+                                rt_wt_even[WORD * i +: WORD] = 0;
+                            else
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
                         end
-                        FLOATING_MULTIPLY_AND_SUBTRACT: begin
-                            for (int i = 0; i <= 3; i++) begin
-                                fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) * $bitstoshortreal(rb_rd_even[WORD * i +: WORD]) - $bitstoshortreal(rc_rd_even[WORD * i +: WORD]);
-                                if(fp_temp < - Smax)
-                                    rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
-                                else if(fp_temp > Smax)
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
-                                else if(fp_temp < Smin)
-                                    rt_wt_even[WORD * i +: WORD] = 0;
-                                else
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
-                            end
-                            regWr_en_even = 1;
-                            sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                        regWr_en_even = 1;
+                        sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                    end
+                    FLOATING_MULTIPLY_AND_SUBTRACT: begin
+                        for (int i = 0; i <= 3; i++) begin
+                            fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) * $bitstoshortreal(rb_rd_even[WORD * i +: WORD]) - $bitstoshortreal(rc_rd_even[WORD * i +: WORD]);
+                            if(fp_temp < - Smax)
+                                rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
+                            else if(fp_temp > Smax)
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
+                            else if((fp_temp>-Smin)&&(fp_temp<Smin))
+                                rt_wt_even[WORD * i +: WORD] = 0;
+                            else
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
                         end
-                        FLAOTING_MULTIPLY: begin
-                            for (int i = 0; i <= 3; i++) begin
-                                fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) * $bitstoshortreal(rb_rd_even[WORD * i +: WORD]);
-                                if(fp_temp < - Smax)
-                                    rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
-                                else if(fp_temp > Smax)
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
-                                else if(fp_temp < Smin)
-                                    rt_wt_even[WORD * i +: WORD] = 0;
-                                else
-                                    rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
-                            end
-                            regWr_en_even = 1;
-                            sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                        regWr_en_even = 1;
+                        sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
+                    end
+                    FLAOTING_MULTIPLY: begin
+                        for (int i = 0; i <= 3; i++) begin
+                            fp_temp = $bitstoshortreal(ra_rd_even[WORD * i +: WORD]) * $bitstoshortreal(rb_rd_even[WORD * i +: WORD]);
+                            if(fp_temp < - Smax)
+                                rt_wt_even[WORD * i +: WORD] = -$shortrealtobits(Smax);
+                            else if(fp_temp > Smax)
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(Smax);
+                            else if((fp_temp>-Smin)&&(fp_temp<Smin))
+                                rt_wt_even[WORD * i +: WORD] = 0;
+                            else
+                                rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
                         end
+                    end
 
                         //Single Precision Interger Unit
                         MULTIPLY: begin
