@@ -10,9 +10,11 @@ Date: March 03, 2023
 module oddPipe (
     clk,
     reset,
+    flush,
     unit_id,
     PC,
     PC_out,
+    br_first_instr,
     branch_taken,
     ra_rd_odd,
     rb_rd_odd,
@@ -28,7 +30,7 @@ module oddPipe (
     ls_stage6_result,
     branch_stage3_result
     );
-input clk, reset;
+input clk, reset, br_first_instr;
 input [0 : UNIT_ID_SIZE - 1] unit_id;
 input [0 : INTERNAL_OPCODE_SIZE - 1] opcode;
 input signed [0:QUADWORD - 1] ra_rd_odd, rb_rd_odd, rc_rd_odd;
@@ -53,7 +55,7 @@ logic [0 : QUADWORD - 1] ls_data_rd, rt_wt_odd;
 logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD)-1] perm_stage1_result, perm_stage2_result, ls_stage1_result, ls_stage2_result, ls_stage3_result, ls_stage4_result, ls_stage5_result, branch_stage1_result, branch_stage2_result;
 //logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD /*+ WORD + 1*/)-1] 
 
-output logic branch_taken;
+output logic branch_taken, flush;
 output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD)-1] perm_stage3_result, ls_stage6_result, branch_stage3_result;
 output logic [0:WORD-1] PC_out;
 //output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD + WORD + 1)-1] ls_stage6_result;
@@ -64,6 +66,7 @@ ls_stage1_result = 0;
 branch_stage1_result = 0;
 ls_wr_en = 0;
 branch_taken = 0;
+flush = 0;
 
 case(opcode) 
 //Permute
@@ -351,6 +354,7 @@ BRANCH_RELATIVE : begin
                   PC_out = PC + ({{14{x1[0]}},x1});
                   regWr_en_odd = 1'b0;
                   branch_taken = 1;
+                  flush = br_first_instr;
                   branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                   end
 BRANCH_ABSOLUTE : begin
@@ -358,15 +362,17 @@ BRANCH_ABSOLUTE : begin
                   PC_out = ({{14{x1[0]}},x1});
                   regWr_en_odd = 1'b0;
                   branch_taken = 1;
-                  branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
+                  flush = br_first_instr;
+                  branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                   end 
 BRANCH_RELATIVE_AND_SET_LINK : begin
                   rt_wt_odd[0:31] = PC + 4;
                   rt_wt_odd[32:127] = 96'd0;
                   x1 = {imm16,2'b0};
-                  PC_out = PC + ({{14{x1[0]}},x1});
+                  PC_out = PC + $signed(({{14{x1[0]}},x1}));
                   regWr_en_odd = 1'b1;
                   branch_taken = 1;
+                  flush = br_first_instr;
                   branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                   end
 BRANCH_ABSOLUTE_AND_SET_LINK :  begin  
@@ -376,56 +382,65 @@ BRANCH_ABSOLUTE_AND_SET_LINK :  begin
                                 PC_out = ({{14{x1[0]}},x1});  
                                 regWr_en_odd = 1'b1; 
                                 branch_taken = 1;  
+                                flush = br_first_instr;
                                 branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};                             
                                 end 
 BRANCH_IF_NOT_ZERO_WORD : begin 
-                          if (rt_wt_odd[0:31] != 0) begin
+                          if (rc_rd_odd[0:31] != 0) begin
                                 x1 = {imm16,2'b0};
                                 PC_out = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;
                                 branch_taken = 1;
+                                flush = br_first_instr;
                           end   
                           else begin
                                 PC_out = PC + 4;
                                 branch_taken = 0;
+                                flush = 0;
                           end
                             regWr_en_odd = 1'b0;  
                             branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};   
                           end 
 BRANCH_IF_ZERO_WORD : begin
-                      if (rt_wt_odd[0:31] == 0) begin
+                      if (rc_rd_odd[0:31] == 0) begin
                                 x1 = {imm16,2'b0};
                                 PC_out = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
                                 branch_taken = 1;
+                                flush = br_first_instr;
                           end   
                           else begin
                                 PC_out = PC + 4;
                                 branch_taken = 0;
+                                flush = 0;
                           end
                             regWr_en_odd = 1'b0;  
                             branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};   
 end    
 BRANCH_IF_NOT_ZERO_HALFWORD : begin
-                                if (rt_wt_odd[16:31] != 0) begin
+                                if (rc_rd_odd[16:31] != 0) begin
                                     x1 = {imm16,2'b0};
                                     PC_out = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
                                     branch_taken = 1;
+                                    flush = br_first_instr;
                                 end   
                                 else begin
                                     PC_out = PC + 4;
                                     branch_taken = 0;
+                                    flush = 0;
                                 end
                                 regWr_en_odd = 1'b0;    
                                 branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                               end                                                                          
 BRANCH_IF_ZERO_HALFWORD : begin
-                            if (rt_wt_odd[16:31] == 0) begin
+                            if (rc_rd_odd[16:31] == 0) begin
                                 x1 = {imm16,2'b0};
                                 PC_out = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC; 
                                 branch_taken = 1; 
+                                flush = br_first_instr;
                                 end   
                             else begin
                                 PC_out = PC + 4;
                                 branch_taken = 0;
+                                flush = 0;
                             end
                             regWr_en_odd = 1'b0; 
                             branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};   
@@ -436,6 +451,7 @@ LNOP : begin
     perm_stage1_result = 0;     //{unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
 end
 default : begin
+    flush = 0;
     regWr_en_odd = 0;
     ls_wr_en = 0;
     perm_stage1_result = 0;

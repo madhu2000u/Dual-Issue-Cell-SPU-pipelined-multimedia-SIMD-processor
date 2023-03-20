@@ -3,7 +3,7 @@
 module spuTb ();
     
     logic                                   clk, reset;
-    logic                                   br_first_isntr;    //This signal sent by decode stage indicates to the execution stage if the first instruction of the dual-fetch (in order) is branch or not. If branch is taken (which will be found out later in the execution stages in oddPipe, it has to flush off the following instruction that was issued into the even pipe since it is the wrong instruction after branch is taken)
+    logic                                   br_first_instr;    //This signal sent by decode stage indicates to the execution stage if the first instruction of the dual-fetch (in order) is branch or not. If branch is taken (which will be found out later in the execution stages in oddPipe, it has to flush off the following instruction that was issued into the even pipe since it is the wrong instruction after branch is taken)
     logic [0 : UNIT_ID_SIZE - 1]            unit_id;
     logic [0 : INTERNAL_OPCODE_SIZE - 1]    opcode_even, opcode_odd;
     logic [0 : REG_ADDR_WIDTH - 1]          addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd;
@@ -45,7 +45,7 @@ module spuTb ();
     PC,
     PC_out,
     branch_taken,
-    br_first_isntr,
+    br_first_instr,
     init,
     init2);
 
@@ -98,7 +98,7 @@ module spuTb ();
         opcode_even = ADD_WORD_IMMEDIATE;
         addr_ra_rd_even = 0;
         addr_rt_wt_even = 7'd1;
-        imm10_even = 10'd5;
+        imm10_even = -10'd5;
         // @(posedge clk);
         // opcode_even = ADD_WORD_IMMEDIATE;
         // addr_ra_rd_even = 1;
@@ -122,7 +122,7 @@ module spuTb ();
             addr_rt_wt_even = 0;
             @(posedge clk);
         end
-        opcode_even = ADD_WORD;
+        opcode_even = SUBTRACT_FROM_WORD;
         addr_ra_rd_even = 2;
         addr_rb_rd_even = 1;
         addr_rt_wt_even = 7'd3;
@@ -220,6 +220,19 @@ module spuTb ();
             addr_rt_wt_odd = 0;
             @(posedge clk);
         end
+
+        //Flush Test
+        opcode_odd = BRANCH_RELATIVE_AND_SET_LINK; addr_rc_rd_odd = 0; br_first_instr = 0;
+        opcode_even = MULTIPLY_AND_ADD; addr_ra_rd_even = 1; addr_rb_rd_even = 2; addr_rc_rd_even = 5;
+        @(posedge clk)
+        repeat(9) begin
+            opcode_even = NOP; unit_id = 0; addr_ra_rd_even = 0; addr_rb_rd_even = 5;addr_rt_wt_even = 0;
+            opcode_odd = LNOP;
+            unit_id = 0;
+            addr_rt_wt_odd = 0;
+            @(posedge clk);
+        end
+
 
 
 
