@@ -295,7 +295,7 @@ module evenPipe (
                     end
                     COMPARE_EQUAL_HALFWORD: begin
                             for (int i = 0; i <= 7; i++) begin
-                                if(ra_rd_even[HALFWORD * i +: HALFWORD] == rb_rd_even[HALFWORD * i +: HALFWORD])
+                                if($signed(ra_rd_even[HALFWORD * i +: HALFWORD]) == $signed(rb_rd_even[HALFWORD * i +: HALFWORD]))
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = 16'd1;
                                 else
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = 16'd0;
@@ -306,7 +306,7 @@ module evenPipe (
                     COMPARE_EQUAL_HALFWORD_IMMEDIATE: begin
                             temp4 = {{6{imm10[0]}}, imm10};
                             for (int i = 0; i <= 7; i++) begin
-                                if(ra_rd_even[HALFWORD * i +: HALFWORD] == temp4)
+                                if($signed(ra_rd_even[HALFWORD * i +: HALFWORD]) == $signed(temp4))
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = 16'd1;
                                 else
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = 16'd0;
@@ -316,7 +316,7 @@ module evenPipe (
                     end
                     COMPARE_EQUAL_WORD: begin
                             for (int i = 0; i <= 3; i++) begin
-                                if(ra_rd_even[WORD * i +: WORD] == rb_rd_even[WORD * i +: WORD])
+                                if($signed(ra_rd_even[WORD * i +: WORD]) == $signed(rb_rd_even[WORD * i +: WORD]))
                                     rt_wt_even[WORD * i +: WORD] = 32'd1;
                                 else
                                     rt_wt_even[WORD * i +: WORD] = 32'd0;
@@ -327,7 +327,7 @@ module evenPipe (
                     COMPARE_EQUAL_WORD_IMMEDIATE: begin
                             temp = {{22{imm10[0]}}, imm10};
                             for (int i = 0; i <= 3; i++) begin
-                                if(ra_rd_even[WORD * i +: WORD] == temp)
+                                if($signed(ra_rd_even[WORD * i +: WORD]) == $signed(temp))
                                     rt_wt_even[WORD * i +: WORD] = 32'd1;
                                 else
                                     rt_wt_even[WORD * i +: WORD] = 32'd0;
@@ -337,7 +337,7 @@ module evenPipe (
                     end
                     COMPARE_GREATER_THAN_HALFWORD: begin
                             for (int i = 0; i <= 7; i++) begin
-                                if(ra_rd_even[HALFWORD * i +: HALFWORD] > rb_rd_even[HALFWORD * i +: HALFWORD])
+                                if($signed(ra_rd_even[HALFWORD * i +: HALFWORD]) > $signed(rb_rd_even[HALFWORD * i +: HALFWORD]))
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = 16'd1;
                                 else
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = 16'd0;
@@ -348,7 +348,7 @@ module evenPipe (
                     COMPARE_GREATER_THAN_HALFWORD_IMMEDIATE: begin
                             temp4 = {{6{imm10[0]}}, imm10};
                             for (int i = 0; i <= 7; i++) begin
-                                if(ra_rd_even[HALFWORD * i +: HALFWORD] > temp4)
+                                if($signed(ra_rd_even[HALFWORD * i +: HALFWORD]) > $signed(temp4))
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = 16'd1;
                                 else
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = 16'd0;
@@ -358,7 +358,7 @@ module evenPipe (
                     end
                     COMPARE_GREATER_THAN_WORD: begin
                             for (int i = 0; i <= 3; i++) begin
-                                if(ra_rd_even[WORD * i +: WORD] > rb_rd_even[WORD * i +: WORD])
+                                if($signed(ra_rd_even[WORD * i +: WORD]) > $signed(rb_rd_even[WORD * i +: WORD]))
                                     rt_wt_even[WORD * i +: WORD] = 32'd1;
                                 else
                                     rt_wt_even[WORD * i +: WORD] = 32'd0;
@@ -369,7 +369,7 @@ module evenPipe (
                     COMPARE_GREATER_THAN_WORD_IMMEDIATE: begin
                             temp = {{22{imm10[0]}}, imm10};
                             for (int i = 0; i <= 3; i++) begin
-                                if(ra_rd_even[WORD * i +: WORD] > temp)
+                                if($signed(ra_rd_even[WORD * i +: WORD]) > $signed(temp))
                                     rt_wt_even[WORD * i +: WORD] = 32'd1;
                                 else
                                     rt_wt_even[WORD * i +: WORD] = 32'd0;
@@ -666,7 +666,7 @@ module evenPipe (
                         //Single Precision Interger Unit
                         MULTIPLY: begin
                             for (int i = 0; i <= 3; i++) begin
-                                rt_wt_even[WORD * i +: WORD] = ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD] * rb_rd_even[(WORD * i) + HALFWORD +: HALFWORD];
+                                rt_wt_even[WORD * i +: WORD] = $signed(ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) * $signed(rb_rd_even[(WORD * i) + HALFWORD +: HALFWORD]);
                             end
                             regWr_en_even = 1;
                             sp_int_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
@@ -681,7 +681,7 @@ module evenPipe (
                         MULTIPLY_IMMEDIATE: begin
                             t = {{6{imm10[0]}}, imm10};
                             for (int i = 0; i <= 3; i++) begin
-                                rt_wt_even[WORD * i +: WORD] = ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD] * t;
+                                rt_wt_even[WORD * i +: WORD] = $signed(ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) * $signed(t);
                             end
                             regWr_en_even = 1;
                             sp_int_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
@@ -696,7 +696,7 @@ module evenPipe (
                         end
                         MULTIPLY_AND_ADD: begin
                             for (int i = 0; i <= 3; i++) begin
-                                rt_wt_even[WORD * i +: WORD] = ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD] * rb_rd_even[(WORD * i) + HALFWORD +: HALFWORD] + rc_rd_even[WORD * i +: WORD];
+                                rt_wt_even[WORD * i +: WORD] = $signed(ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) * $signed(rb_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) + $signed(rc_rd_even[WORD * i +: WORD]);
                             end
                             regWr_en_even = 1;
                             sp_int_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
