@@ -3,6 +3,7 @@
 module spuTb ();
     
     logic                                   clk, reset;
+    logic                                   br_first_isntr;    //This signal sent by decode stage indicates to the execution stage if the first instruction of the dual-fetch (in order) is branch or not. If branch is taken (which will be found out later in the execution stages in oddPipe, it has to flush off the following instruction that was issued into the even pipe since it is the wrong instruction after branch is taken)
     logic [0 : UNIT_ID_SIZE - 1]            unit_id;
     logic [0 : INTERNAL_OPCODE_SIZE - 1]    opcode_even, opcode_odd;
     logic [0 : REG_ADDR_WIDTH - 1]          addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd;
@@ -14,6 +15,8 @@ module spuTb ();
     logic [0 : QUADWORD - 1]                rt_wt_even, rt_wt_odd;
     logic                                   regWr_en_even, regWr_en_odd;
     logic [0:QUADWORD-1]                    ra_rd_even, rb_rd_even, rc_rd_even, ra_rd_odd, rb_rd_odd;
+    logic [0 : WORD - 1]                    PC, PC_out;
+    logic                                   branch_taken;
     logic init, init2;
     
     initial clk = 0;
@@ -39,6 +42,10 @@ module spuTb ();
     imm10_odd,
     imm16_odd,
     imm18_odd,
+    PC,
+    PC_out,
+    branch_taken,
+    br_first_isntr,
     init,
     init2);
 
@@ -84,6 +91,7 @@ module spuTb ();
         // init2 = 0;
         //load_reg_file(128'h00000005000000070000000A0000001F, 128'h00000005000000070000000A0000001F);
         reset = 1;
+        PC = 0;
         @(posedge clk);
         reset = 0;
         unit_id = 1;
@@ -156,20 +164,66 @@ module spuTb ();
             @(posedge clk);
         end
 
-        opcode_even = NOP; unit_id = 0; addr_rt_wt_even = 0; opcode_odd = ROTATE_QUADWORD_BY_BYTES_IMMEDIATE; addr_ra_rd_odd = 2; addr_rt_wt_odd = 12; imm7_odd = 2;
+        //Odd to Even fw test
+        // opcode_even = NOP; unit_id = 0; addr_rt_wt_even = 0; opcode_odd = ROTATE_QUADWORD_BY_BYTES_IMMEDIATE; addr_ra_rd_odd = 2; addr_rt_wt_odd = 12; imm7_odd = 2;
+        // @(posedge clk);
+        // opcode_odd = LNOP; unit_id = 0; addr_rt_wt_odd = 0;
+        // repeat(3) begin
+        //     @(posedge clk);
+        // end
+        // opcode_even = SHIFT_LEFT_WORD; addr_ra_rd_even = 12; addr_rb_rd_even = 1; addr_rt_wt_even = 10;
+        // @(posedge clk);
+        // repeat(9) begin
+        //     opcode_even = NOP;
+        //     unit_id = 0;
+        //     addr_rt_wt_even = 0;
+        //     @(posedge clk);
+        // end
+        
+
+        //odd to odd fw
+        opcode_even = NOP; unit_id = 0; addr_rt_wt_even = 0;
+        opcode_odd = LOAD_QUADWORD_X; addr_ra_rd_odd = 2; addr_rb_rd_odd = 3; addr_rt_wt_odd = 11;
         @(posedge clk);
-        opcode_odd = LNOP; unit_id = 0; addr_rt_wt_odd = 0;
-        repeat(3) begin
+        repeat(6) begin
+            opcode_odd = LNOP;
+            unit_id = 0;
+            addr_rt_wt_odd = 0;
             @(posedge clk);
         end
-        opcode_even = SHIFT_LEFT_WORD; addr_ra_rd_even = 12; addr_rb_rd_even = 1; addr_rt_wt_even = 10;
+        opcode_odd = SHIFT_LEFT_QUADWORD_BY_BITS_IMMEDIATE; addr_ra_rd_odd = 11; addr_rt_wt_odd = 0; unit_id = 5; imm7_odd = 4;
         @(posedge clk);
         repeat(9) begin
-            opcode_even = NOP;
+            opcode_odd = LNOP;
             unit_id = 0;
-            addr_rt_wt_even = 0;
+            addr_rt_wt_odd = 0;
             @(posedge clk);
         end
+
+
+        //odd to even fw
+        opcode_even = NOP; unit_id = 0; addr_rt_wt_even = 0;
+        opcode_odd = SHIFT_LEFT_QUADWORD_BY_BITS; addr_ra_rd_odd = 11; addr_rt_wt_odd = 12; unit_id = 5; imm7_odd = 4;
+        @(posedge clk);
+        repeat(4) begin
+            opcode_odd = LNOP;
+            unit_id = 0;
+            addr_rt_wt_odd = 0;
+            @(posedge clk);
+        end
+        opcode_even = FLOATING_ADD; addr_ra_rd_even = 12; addr_rb_rd_even = 5; rt_wt_even = 13;
+        @(posedge clk);
+        repeat(9) begin
+            opcode_even = NOP; unit_id = 0; addr_ra_rd_even = 0; addr_rb_rd_even = 5;addr_rt_wt_even = 0;
+            opcode_odd = LNOP;
+            unit_id = 0;
+            addr_rt_wt_odd = 0;
+            @(posedge clk);
+        end
+
+
+
+
 
         $finish;
     end

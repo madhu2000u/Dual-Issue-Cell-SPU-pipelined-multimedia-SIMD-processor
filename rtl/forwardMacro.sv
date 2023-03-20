@@ -26,6 +26,7 @@ module forwardMacro (
     sp_int_stage7_result,
     perm_stage3_result,
     ls_stage6_result,
+    branch_stage3_result,
     FWE8,
     FWO8
 );
@@ -34,7 +35,7 @@ module forwardMacro (
     parameter RESULT = UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH; //Location of the 128-bit result in the 139-bit stage packet.
 
     input clk, reset;
-    input logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1]    fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result;
+    input logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1]    fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result, branch_stage3_result;
     logic [0 : REG_ADDR_WIDTH - 1] addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd;
     //input logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD + WORD + 1)-1] ls_stage6_result;
 
@@ -253,7 +254,11 @@ module forwardMacro (
 
 
         /*Odd Pipe*/
-        FWO4 <= perm_stage3_result;
+        if(branch_stage3_result > 0)
+            FWO4 <= branch_stage3_result;
+        else
+            FWO4 <= perm_stage3_result;
+        
         FWO5 <= FWO4;
         FWO6 <= FWO5;
 

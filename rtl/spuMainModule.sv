@@ -25,6 +25,9 @@ module spuMainModule (
     rf_imm10_odd,
     rf_imm16_odd,
     rf_imm18_odd,
+    PC,
+    PC_out,
+    branch_taken,
     init,
     init2
 );
@@ -38,6 +41,10 @@ module spuMainModule (
     input [0 : IMM16 - 1]                   rf_imm16_odd;              //no 16-bit immediate for even pipe instructions
     input [0 : IMM18 - 1]                   rf_imm18_odd;           
     input [0 : REG_ADDR_WIDTH - 1]          rf_addr_rt_wt_even, rf_addr_rt_wt_odd;
+    input [0 : WORD - 1]                    PC;
+
+    output branch_taken;
+    output [0 : WORD - 1]                   PC_out;
 
     input init, init2; //TODO: testing purposes
 
@@ -52,7 +59,7 @@ module spuMainModule (
     logic [0 : QUADWORD - 1]                ra_rd_even, rb_rd_even, rc_rd_even, ra_rd_odd, rb_rd_odd, rc_rd_odd, fw_ra_rd_even_out, fw_rb_rd_even_out, fw_rc_rd_even_out, fw_ra_rd_odd_out, fw_rb_rd_odd_out, fw_rc_rd_odd_out;
     logic [0 : QUADWORD - 1]                rt_wt_even, rt_wt_odd;
     logic                                   regWr_en_even, regWr_en_odd;
-    logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1] fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result, FWE8, FWO8;
+    logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1] fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result, branch_stage3_result,  FWE8, FWO8;
     logic [0 : REG_ADDR_WIDTH - 1]          addr_rt_wt_even_internal, addr_rt_wt_odd_internal;
 
     assign regWr_en_even = FWE8[UNIT_ID_SIZE];
@@ -80,11 +87,11 @@ module spuMainModule (
 
     registerFile registerFile (clk, reset, ra_rd_even, rb_rd_even, rc_rd_even, rt_wt_even, ra_rd_odd, rb_rd_odd, rc_rd_odd, rt_wt_odd, addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_rt_wt_even_internal, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd, addr_rt_wt_odd_internal, regWr_en_even, regWr_en_odd, init, init2);
 
-    forwardMacro forwardMacro (clk, reset, addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd, ra_rd_even, rb_rd_even, rc_rd_even, ra_rd_odd, rb_rd_odd, rc_rd_odd, fw_ra_rd_even_out, fw_rb_rd_even_out, fw_rc_rd_even_out, fw_ra_rd_odd_out, fw_rb_rd_odd_out, fw_rc_rd_odd_out, fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result, FWE8, FWO8);
+    forwardMacro forwardMacro (clk, reset, addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd, ra_rd_even, rb_rd_even, rc_rd_even, ra_rd_odd, rb_rd_odd, rc_rd_odd, fw_ra_rd_even_out, fw_rb_rd_even_out, fw_rc_rd_even_out, fw_ra_rd_odd_out, fw_rb_rd_odd_out, fw_rc_rd_odd_out, fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result, branch_stage3_result, FWE8, FWO8);
 
     evenPipe evenPipe (clk, reset, unit_id, opcode_even, fw_ra_rd_even_out, fw_rb_rd_even_out, fw_rc_rd_even_out, addr_rt_wt_even, imm7_even, imm10_even, fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result);
 
-    oddPipe oddPipe (clk, reset, unit_id, fw_ra_rd_odd_out, fw_rb_rd_odd_out, fw_rc_rd_odd_out, addr_rt_wt_odd, opcode_odd, imm7_odd, imm10_odd, imm16_odd, imm18_odd, perm_stage3_result, ls_stage6_result);
+    oddPipe oddPipe (clk, reset, unit_id, PC, PC_out, branch_taken, fw_ra_rd_odd_out, fw_rb_rd_odd_out, fw_rc_rd_odd_out, addr_rt_wt_odd, opcode_odd, imm7_odd, imm10_odd, imm16_odd, imm18_odd, perm_stage3_result, ls_stage6_result, branch_stage3_result);
 
 
 endmodule
