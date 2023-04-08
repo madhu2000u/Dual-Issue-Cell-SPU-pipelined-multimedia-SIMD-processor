@@ -1,5 +1,5 @@
 `include "constants.sv"
-`include "./evenPipe/evenPipe.sv"
+`include "evenPipe.sv"
 `include "oddPipe.sv"
 `include "registerFile.sv"
 `include "forwardMacro.sv"
