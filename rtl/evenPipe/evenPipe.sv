@@ -37,8 +37,8 @@ module evenPipe (
                                                                    sp_fp_stage1_result, sp_fp_stage2_result, sp_fp_stage3_result, sp_fp_stage4_result, sp_fp_stage5_result,
                                                                    sp_int_stage1_result, sp_int_stage2_result, sp_int_stage3_result, sp_int_stage4_result, sp_int_stage5_result, sp_int_stage6_result;
     logic [0 : HALFWORD - 1] temp4;
-    logic [0 : WORD - 1] temp, temp2;
-    logic [0 : WORD] temp1[3];          //carry generate instr requires additional 1 bit to place the carry bit. (other instr that require this also uses temp1)
+    logic [0 : WORD - 1] temp, temp2, temp5;
+    logic [0 : WORD] temp1;          //carry generate instr requires additional 1 bit to place the carry bit. (other instr that require this also uses temp1)
     logic [0 : QUADWORD - 1] temp3;
     logic [0 : HALFWORD - 1] s, t, r;   //temporary registers notations are followed as per IBM's Synergistic Processing Unit (SPU) ISA description maual for better clarity
     logic [0 : BYTE - 1] b, c;
@@ -97,22 +97,22 @@ module evenPipe (
                     end
                     ADD_EXTENDED: begin
                             for (int i = 0; i <= 3; i++) begin
-                                rt_wt_even[WORD * i +: WORD] = ra_rd_even[WORD * i +: WORD] + rb_rd_even[WORD * i +: WORD] + rc_rd_even[i * WORD - 1];         //decode stage sends rt(destination register) through rc(source register) by using rt as source reg to read
+                                rt_wt_even[WORD * i +: WORD] = ra_rd_even[WORD * i +: WORD] + rb_rd_even[WORD * i +: WORD] + {31'b0, rc_rd_even[(i + 1) * WORD - 1]};         //decode stage sends rt(destination register) through rc(source register) by using rt as source reg to read
                             end
                             regWr_en_even = 1;
                             fx1_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                     end
                     CARRY_GENERATE: begin
                             for (int i = 0; i <= 3; i++) begin
-                                temp1[i] = {1'b0, ra_rd_even[WORD * i +: WORD]} + {1'b0, rb_rd_even[WORD * i +: WORD]};
-                                rt_wt_even[WORD * i +: WORD] = {31'd0, temp1[i][0]};
+                                temp1 = {1'b0, ra_rd_even[WORD * i +: WORD]} + {1'b0, rb_rd_even[WORD * i +: WORD]};
+                                rt_wt_even[WORD * i +: WORD] = {31'd0, temp1[0]};
                             end
                             regWr_en_even = 1;
                             fx1_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                     end
                     SUBTRACT_FROM_EXTENDED: begin    //TODO
                             for (int i = 0; i <= 3; i++) begin
-                                rt_wt_even[WORD * i +: WORD] = rb_rd_even[WORD * i +: WORD] - ra_rd_even[WORD * i +: WORD] + rc_rd_even[WORD * i - 1];
+                                rt_wt_even[WORD * i +: WORD] = rb_rd_even[WORD * i +: WORD] - ra_rd_even[WORD * i +: WORD] + rc_rd_even[WORD * (i + 1) - 1];
                             end
                             regWr_en_even = 1;
                             fx1_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
@@ -175,8 +175,8 @@ module evenPipe (
                     end
                     FORM_SELECT_MASK_FOR_HALFWORD: begin
                             b = ra_rd_even[3 * BYTE +: BYTE];
-                            for (int i = 0, k = 0; i <= 7; i++, k = k + 2) begin
-                                if(s[i])
+                            for (int i = 0, k = 0; i <= 7; i++, k++) begin
+                                if(b[i])
                                     temp3[HALFWORD * k +: HALFWORD] = 16'd1;
                                 else
                                     temp3[HALFWORD * k +: HALFWORD] = 16'b0;
@@ -436,7 +436,7 @@ module evenPipe (
                             regWr_en_even = 1;
                             fx2_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                         end
-                        SHIFT_LEFT_WORD_IMMEDIATE: begin
+                        SHIFT_LEFT_HALFWORD_IMMEDIATE: begin
                             if(imm7[1 : 6] <= 15) begin
                                 for (int i = 0; i <= 7; i++) begin
                                     rt_wt_even[HALFWORD * i +: HALFWORD] = ra_rd_even[HALFWORD * i +: HALFWORD] << imm7[1 : 6];         //behavioural description of system verilog
@@ -503,29 +503,29 @@ module evenPipe (
                         ROTATE_WORD: begin
                             for (int i = 0; i <= 3; i++) begin
                                 s = rb_rd_even[WORD * i +: WORD] & 32'h0000001F;
-                                t = ra_rd_even[WORD * i +: WORD];
+                                temp2 = ra_rd_even[WORD * i +: WORD];
                                 for (int j = 0; j <= 31; j++) begin
                                     if((j + s) < 32)
-                                        r[j] = t[j + s];
+                                        temp5[j] = temp2[j + s];
                                     else
-                                        r[j] = t[j + s - 32];
+                                        temp5[j] = temp2[j + s - 32];
                                 end
-                                rt_wt_even[WORD * i +: WORD] = r;
+                                rt_wt_even[WORD * i +: WORD] = temp5;
                             end
                             regWr_en_even = 1;
                             fx2_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                         end
                         ROTATE_WORD_IMMEDIATE: begin
-                            s = {{25{imm7[0]}}, imm7} & 32'h0000001F;
+                            temp = {{25{imm7[0]}}, imm7} & 32'h0000001F;
                             for (int i = 0; i <= 3; i++) begin
-                                t = ra_rd_even[WORD * i +: WORD];
+                                temp2 = ra_rd_even[WORD * i +: WORD];
                                 for (int j = 0; j <= 31; j++) begin
-                                    if((j + s) < 32)
-                                        r[j] = t[j + s];
+                                    if((j + temp) < 32)
+                                        temp3[j] = temp2[j + temp];
                                     else
-                                        r[j] = t[j + s - 32];
+                                        temp[j] = temp2[j + temp - 32];
                                 end
-                                rt_wt_even[WORD * i +: WORD] = r;
+                                rt_wt_even[WORD * i +: WORD] = temp;
                             end
                             regWr_en_even = 1;
                             fx2_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
@@ -659,6 +659,8 @@ module evenPipe (
                             else
                                 rt_wt_even[WORD * i +: WORD] = $shortrealtobits(fp_temp);
                         end
+                        regWr_en_even = 1;
+                        sp_fp_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                     end
 
                         //Single Precision Interger Unit
@@ -694,7 +696,7 @@ module evenPipe (
                         end
                         MULTIPLY_AND_ADD: begin
                             for (int i = 0; i <= 3; i++) begin
-                                rt_wt_even[WORD * i +: WORD] = $signed(ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) * $signed(rb_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) + $signed(rc_rd_even[WORD * i +: WORD]);
+                                rt_wt_even[WORD * i +: WORD] = $signed(ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) * $signed(rb_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) + $signed(rc_rd_even[WORD * (i + 1) +: WORD]);
                             end
                             regWr_en_even = 1;
                             sp_int_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};

@@ -366,7 +366,7 @@ BRANCH_ABSOLUTE : begin
                   branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                   end 
 BRANCH_RELATIVE_AND_SET_LINK : begin
-                  rt_wt_odd[0:31] = (PC_in + 4) & LSLR;
+                  rt_wt_odd[0:31] = (PC + 4) & LSLR;
                   rt_wt_odd[32:127] = 96'd0;
                   x1 = {imm16,2'b0};
                   PC_out = PC + $signed(({{14{x1[0]}},x1}));
@@ -376,7 +376,7 @@ BRANCH_RELATIVE_AND_SET_LINK : begin
                   branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
                   end
 BRANCH_ABSOLUTE_AND_SET_LINK :  begin  
-                                rt_wt_odd[0:31] = (PC_in + 4) & LSLR;
+                                rt_wt_odd[0:31] = (PC + 4) & LSLR;
                                 rt_wt_odd[32:127] = 96'd0;  
                                 x1 = {imm16,2'b0};
                                 PC_out = ({{14{x1[0]}},x1});  

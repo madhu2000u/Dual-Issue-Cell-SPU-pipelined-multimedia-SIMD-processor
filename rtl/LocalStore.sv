@@ -23,6 +23,11 @@ module LocalStore (
 
 
     always_ff @ (posedge clk) begin
+        if(reset) begin
+            for (int i = 0; i < 32768; i++) begin
+                lsa_mem[i] <= $random;
+            end
+        end
         
         if(ls_wr_en) begin
             for (int i = 0; i < 16; i++) begin
