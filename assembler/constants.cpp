@@ -1,8 +1,22 @@
 #include <map>
 
-const int OPCODE_LEN = 32;
+const int INSTR_LEN = 32;
+const int REG_ADDR_LEN = 7;
+const int IMM10_LEN = 10;
+const int IMM16_LEN = 16;
+const int IMM18_LEN = 18;
 
+enum instrFormatOpcodeLenEnum {
+    RR_RI7 = 11, RRR = 4, RI10 = 8, RI16 = 9, RI18 = 7  //opcode lengths or different instruction type
+};
 
+struct instrFormat
+{
+    std::string instr;
+    instrFormatOpcodeLenEnum type;
+
+    instrFormat(const std::string& instr_, instrFormatOpcodeLenEnum type_) : instr(instr_), type(type_) {}
+};
 
 enum opcode {
     //Simple Fixed 1
@@ -121,6 +135,9 @@ enum opcode {
 //     LNOP = 7'd93
 };
 
+// instrFormat f;
+// f.instr = "00011000000";
+// f.type = instrFormatOpcodeLenEnum::RR_RI7;
 const std::map<std::string, std::string> opcode_map{
    {"a", "00011000000"},
 
