@@ -138,24 +138,38 @@ std::string codegen(std::vector<std::string> parsed_instr){
 
             case instrFormatOpcodeLenEnum::RI16:     //SPU interpretation: op[8-bits]imm10[10]rb[7]rt[7]  
             {
-                if(parsed_instr.size() != 3) { 
-                    std::cerr << "invalid number of operands for instruction type RI16" << std::endl; 
-                    return "";
+                if((parsed_instr[0] == "br" || parsed_instr[0] == "bra" || parsed_instr[0] == "bi")){
+                    if(parsed_instr.size() != 2){
+                        std::cerr << "invalid number of operands for instruction type RI16 for branch instructions - " << parsed_instr[0] << std::endl; 
+                        return "";
+                    }
+                    std::bitset<IMM16_LEN> imm16_bits(std::stoi(parsed_instr[1]));;
+                    rb = imm16_bits.to_string();
+                    rt = "0000000";
+
                 }
+                else{
+                    if(parsed_instr.size() != 3) {
+                        std::cerr << "invalid number of operands for instruction type RI16 - " << parsed_instr[0] << std::endl; 
+                        return "";
+                    }
+
+                    opcode_bits = std::bitset<REG_ADDR_LEN>(std::stoi(parsed_instr[1]));
+                    rt = opcode_bits.to_string();
+
+                    //rb is used as the imm16 field but the bitset param changes to the imm length
+                    std::bitset<IMM16_LEN> imm16_bits(std::stoi(parsed_instr[2]));
+                    rb = imm16_bits.to_string();
+
+                }
+
 
                 opcode = opcode_map.at(parsed_instr[0]);
 
-                opcode_bits = std::bitset<REG_ADDR_LEN>(std::stoi(parsed_instr[1]));
-                rt = opcode_bits.to_string();
-
-                //rb is used as the imm16 field but the bitset param changes to the imm length
-                std::bitset<IMM16_LEN> imm16_bits(std::stoi(parsed_instr[3]));
-                rb = imm16_bits.to_string();
-                
                 final_binary_instr = opcode + rb + rt;
 
                 if(final_binary_instr.length() != INSTR_LEN){
-                    std::cerr << "err at RI16: invalid instruction length: expected 32-bits but found" << final_binary_instr.length() << "-bits" << std::endl; 
+                    std::cerr << "err at RI16: invalid instruction length: expected 32-bits but found -" << final_binary_instr.length() << "-bits" << std::endl; 
                     return "";
                 }
                 return final_binary_instr;
@@ -213,6 +227,8 @@ int main(){
     }
 
     std::string instr;
+    std::stringstream ss;
+    std::string instr_byte; //
     while (std::getline(infile, instr)){
         parser(instr, parsed_instr);    //Parse
         instr = codegen(parsed_instr);  //Codegen
@@ -220,7 +236,25 @@ int main(){
             std::cerr << "Codegen couldn't generate machine code due to error. Exiting" << std::endl;
             return 1;
         }
-        outfile << instr << std::endl;
+
+        for (int i = 0; i < INSTR_LEN - 7; i = i + 8)
+        {   
+            ss.str("");
+            for (int j = i; j < i + 8; j++)
+            {
+                instr_byte = instr_byte + instr[j];
+                     
+            }
+            // std::cout << instr_byte << std::endl; 
+            ss << std::hex << std::stoi(instr_byte, nullptr, 2);
+            std::string hex_str = ss.str();
+            std::cout << hex_str << std::endl;
+            outfile << hex_str << std::endl;
+            instr_byte = "";
+        }
+        
+        // outfile << instr << std::endl;
+        // std::cout << instr[0:4] << std::endl;
         // std::cout<< parsed_instr.size() << std::endl;
         // for(const auto &item : parsed_instr){
         //     std::cout << item << std::endl;
