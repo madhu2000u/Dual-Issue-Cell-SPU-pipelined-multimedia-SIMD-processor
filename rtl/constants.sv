@@ -22,6 +22,120 @@ parameter Smin = $bitstoshortreal(32'h00800000);
 
 parameter LSLR = 32'h00007FFF;
 
+//Simple Fixed 1
+parameter add_word = 11'b00011000000;
+// parameter ADD_WORD_IMMEDIATE = 7'd2;
+// parameter SUBTRACT_FROM_WORD = 7'd3;
+// parameter SUBTRACT_FROM_WORD_IMMEDIATE = 7'd4;
+// parameter ADD_EXTENDED = 7'd5;
+// parameter CARRY_GENERATE = 7'd6;
+// parameter SUBTRACT_FROM_EXTENDED = 7'd7;
+// parameter BORROW_GENERATE = 7'd8;
+// parameter ADD_HALFWORD = 7'd9;
+// parameter ADD_HALFWORD_IMMEDIATE = 7'd10;
+// parameter SUBTRACT_FROM_HALFWORD = 7'd11;
+// parameter SUBTRACT_FROM_HALFWORD_IMMEDIATE = 7'd12;
+// parameter COUNT_LEADING_ZEROS = 7'd13;
+// parameter FORM_SELECT_MASK_FOR_HALFWORD = 7'd14;
+// parameter FORM_SELECT_MARK_FOR_WORDS = 7'd15;
+// parameter AND = 7'd16;
+// parameter AND_WITH_COMPLEMENT = 7'd17;
+// parameter AND_HALFWORD_IMMEDIATE = 7'd18;
+// parameter AND_WORD_IMMEDIATE = 7'd19;
+// parameter OR = 7'd20;
+// parameter OR_WITH_COMPLEMENT = 7'd21;
+// parameter OR_HALFWORD_IMMEDIATE = 7'd22;
+// parameter OR_WORD_IMMEDIATE = 7'd23;
+// parameter EXCLUSIVE_OR = 7'd24;
+// parameter EXCLUSIVE_OR_HALFWORD_IMMEDIATE = 7'd25;
+// parameter EXCLUSIVE_OR_WORD_IMMEDIATE = 7'd26;
+// parameter NAND = 7'd27;
+// parameter NOR = 7'd28;
+// parameter COMPARE_EQUAL_HALFWORD = 7'd29;
+// parameter COMPARE_EQUAL_HALFWORD_IMMEDIATE = 7'd30;
+// parameter COMPARE_EQUAL_WORD = 7'd31;
+// parameter COMPARE_EQUAL_WORD_IMMEDIATE = 7'd32;
+// parameter COMPARE_GREATER_THAN_HALFWORD = 7'd33;
+// parameter COMPARE_GREATER_THAN_HALFWORD_IMMEDIATE = 7'd34;
+// parameter COMPARE_GREATER_THAN_WORD = 7'd35;
+// parameter COMPARE_GREATER_THAN_WORD_IMMEDIATE = 7'd36;
+// parameter COMPARE_LOGICAL_GREATER_THAN_HALFWORD = 7'd37;
+// parameter COMPARE_LOGICAL_GREATER_THAN_HALFWORD_IMMEDIATE = 7'd38;
+// parameter COMPARE_LOGICAL_GREATER_THAN_WORD = 7'd39;
+// parameter COMPARE_LOGICAL_GREATER_THAN_WORD_IMMEDIATE = 7'd40;
+
+// //Simple Fixed 2
+// parameter SHIFT_LEFT_HALFWORD = 11'b00001011111;
+// parameter SHIFT_LEFT_HALFWORD_IMMEDIATE = 11'b00001111111;
+// parameter SHIFT_LEFT_WORD = 11'b00001011011;
+// parameter SHIFT_LEFT_WORD_IMMEDIATE = 11'b00001111011;
+// parameter ROTATE_HALFWORD = 11'b00001011100;
+// parameter ROTATE_HALFWORD_IMMEDIATE = 11'b00001111100;
+// parameter ROTATE_WORD = 11'b00001011000;
+// parameter ROTATE_WORD_IMMEDIATE = 11'b00001111000;
+
+// // Branch
+// parameter BRANCH_RELATIVE = 9'b001100100;
+// parameter BRANCH_ABSOLUTE = 9'b001100000;
+// parameter BRANCH_RELATIVE_AND_SET_LINK = 9'b001100110;
+// parameter BRANCH_ABSOLUTE_AND_SET_LINK = 9'b001100010;
+// parameter BRANCH_IF_NOT_ZERO_WORD = 9'b001000010;
+// parameter BRANCH_IF_ZERO_WORD = 9'b001000000;
+// parameter BRANCH_IF_NOT_ZERO_HALFWORD = 9'b001000110;
+// parameter BRANCH_IF_ZERO_HALFWORD = 9'b001000100;
+
+// //Single Precision FP MAC
+// parameter FLOATING_ADD = 7'd90;
+// parameter FLOATING_SUBTRACT = 7'd91;
+// parameter FLOATING_MULTIPLY_AND_ADD = 4'b1110;
+// parameter FLOATING_NEGATIVE_MULTIPLY_AND_SUBSTRACT = 4'b1101;
+// parameter FLOATING_MULTIPLY_AND_SUBTRACT = 4'b1111;
+// parameter FLAOTING_MULTIPLY = 11'b01011000110;
+
+// //Single precision integer MAC
+// parameter MULTIPLY = 11'b01111000100;
+// parameter MULTIPLY_UNSIGNED = 11'b01111001100;
+// parameter MULTIPLY_IMMEDIATE = 8'b01110100;
+// parameter MULTIPLY_UNSIGNED_IMMEDIATE = 8'b01110100;
+// parameter MULTIPLY_AND_ADD = 4'b1100;
+
+// //Byte
+// parameter COUNT_ONES_IN_BYTES = 11'b01010110100;
+// parameter ABSOLUTE_DIFFERENCES_OF_BYTES = 11'b00001010011;
+// parameter AVERAGE_BYTES = 11'b00011010011;
+// parameter SUM_BYTES_INTO_HALFWORD = 11'b01001010011;
+
+// //Permute 
+// parameter SHIFT_LEFT_QUADWORD_BY_BITS = 9'b111011011;
+// parameter SHIFT_LEFT_QUADWORD_BY_BITS_IMMEDIATE = 9'b111111011;
+// parameter SHIFT_LEFT_QUADWORD_BY_BYTES = 9'b111011111;
+// parameter SHIFT_LEFT_QUADWORD_BY_BYTES_IMMEDIATE = 9'b111111111;
+// parameter SHIFT_LEFT_QUADWORD_BY_BYTES_FROM_BIT_SHIFT_COUNT = 9'b111001111;
+// parameter ROTATE_QUADWORD_BY_BYTES = 9'b111011100;
+// parameter ROTATE_QUADWORD_BY_BYTES_IMMEDIATE = 9'b111111100;
+// parameter ROTATE_QUADWORD_BY_BYTES_FROM_BIT_SHIFT_COUNT = 9'b111001100;
+// parameter ROTATE_QUADWORD_BY_BITS = 9'b111011000;
+// parameter ROTATE_QUADWORD_BY_BITS_IMMEDIATE = 9'b111111000;
+// parameter GATHER_BITS_FROM_BYTES = 9'b110110010;
+// parameter GATHER_BITS_FROM_HALFWORD = 9'b110110001;
+// parameter GATHER_BITS_FROM_WORDS = 9'b110110000;
+// parameter SHUFFLE_BYTES = 4'b1011;
+
+// //Load & Store
+// parameter LOAD_QUADWORD_D = 7'd84;
+// parameter LOAD_QUADWORD_X = 7'd85;
+// parameter LOAD_QUADWORD_A = 7'd86;
+// parameter STORE_QUADWORD_D = 7'd87;
+// parameter STORE_QUADWORD_X = 7'd88;
+// parameter STORE_QUADWORD_A = 7'd89;
+// parameter IMMEDIATE_LOAD_HALFWORD = 7'd94;
+// parameter IMMEDIATE_LOAD_WORD = 7'd95;
+// parameter IMMEDIATE_LOAD_ADDRESS = 7'd9;
+
+// //Misc Instrs
+// parameter NOP = 7'd92;
+// parameter LNOP = 7'd93;
+
 typedef enum logic [0 : 6] {
 
 //Simple Fixed 1

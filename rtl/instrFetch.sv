@@ -15,16 +15,6 @@ logic [0:7] imem_memory [0:2047] ; // 2KB IMEM memory
 
 initial begin
     $readmemh("../assembler/output.txt", imem_memory);
-    // int file_handle;
-    // bit [0:31] temp;
-    // file_handle = $fopen("../assembler/output.txt", "r");
-    // for (int i = 0; i < 4; i++) begin
-    //         temp = $fscanf(file_handle, "%b", temp);   //Read each 32-bit line from the file.
-    //         $display("%b", temp);
-    //     for (int j = 0; j < 4; j++) begin
-    //         imem_memory[i][j] = temp[8 * j +: 8];
-    //     end
-    // end
 end
 
 always_ff @(posedge clk) begin

@@ -3,6 +3,8 @@
 `include "oddPipe.sv"
 `include "registerFile.sv"
 `include "forwardMacro.sv"
+`include "instrFetch.sv"
+`include "decode.sv"
 
 module spuMainModule (
     clk,
