@@ -106,7 +106,7 @@ parameter add_word = 11'b00011000000;
 // parameter SUM_BYTES_INTO_HALFWORD = 11'b01001010011;
 
 // //Permute 
-// parameter SHIFT_LEFT_QUADWORD_BY_BITS = 9'b111011011;
+parameter shift_left_quadword_by_bits = 11'b00111011011;
 // parameter SHIFT_LEFT_QUADWORD_BY_BITS_IMMEDIATE = 9'b111111011;
 // parameter SHIFT_LEFT_QUADWORD_BY_BYTES = 9'b111011111;
 // parameter SHIFT_LEFT_QUADWORD_BY_BYTES_IMMEDIATE = 9'b111111111;

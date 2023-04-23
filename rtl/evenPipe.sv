@@ -11,10 +11,26 @@ module evenPipe (
     addr_rt_wt_even,
     imm7,
     imm10,
+    fx1_stage1_result,
     fx1_stage2_result, 
-    byte_stage3_result, 
-    fx2_stage3_result, 
-    sp_fp_stage6_result, 
+    byte_stage1_result,
+    byte_stage2_result,
+    byte_stage3_result,
+    fx2_stage1_result,
+    fx2_stage2_result,
+    fx2_stage3_result,
+    sp_fp_stage1_result,
+    sp_fp_stage2_result,
+    sp_fp_stage3_result,
+    sp_fp_stage4_result,
+    sp_fp_stage5_result,
+    sp_fp_stage6_result,
+    sp_int_stage1_result,
+    sp_int_stage2_result,
+    sp_int_stage3_result,
+    sp_int_stage4_result,
+    sp_int_stage5_result,
+    sp_int_stage6_result,
     sp_int_stage7_result
 );
     input clk, reset, flush;
@@ -31,11 +47,11 @@ module evenPipe (
 
     output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1] fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result;
 
-    logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1] fx1_stage1_result,                      //sp -> Single Precision, fp -> Floating Point
-                                                                   byte_stage1_result, byte_stage2_result,
-                                                                   fx2_stage1_result, fx2_stage2_result,
-                                                                   sp_fp_stage1_result, sp_fp_stage2_result, sp_fp_stage3_result, sp_fp_stage4_result, sp_fp_stage5_result,
-                                                                   sp_int_stage1_result, sp_int_stage2_result, sp_int_stage3_result, sp_int_stage4_result, sp_int_stage5_result, sp_int_stage6_result;
+    output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1] fx1_stage1_result,                      //sp -> Single Precision, fp -> Floating Point
+                                                                          byte_stage1_result, byte_stage2_result,
+                                                                          fx2_stage1_result, fx2_stage2_result,
+                                                                          sp_fp_stage1_result, sp_fp_stage2_result, sp_fp_stage3_result, sp_fp_stage4_result, sp_fp_stage5_result,
+                                                                          sp_int_stage1_result, sp_int_stage2_result, sp_int_stage3_result, sp_int_stage4_result, sp_int_stage5_result, sp_int_stage6_result;
     logic [0 : HALFWORD - 1] temp4;
     logic [0 : WORD - 1] temp, temp2, temp5;
     logic [0 : WORD] temp1;          //carry generate instr requires additional 1 bit to place the carry bit. (other instr that require this also uses temp1)

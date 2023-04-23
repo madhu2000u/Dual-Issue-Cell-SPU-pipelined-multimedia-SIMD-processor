@@ -245,7 +245,7 @@ int main(){
                 instr_byte = instr_byte + instr[j];
                      
             }
-            // std::cout << instr_byte << std::endl; 
+            std::cout << instr_byte << std::endl; 
             ss << std::hex << std::stoi(instr_byte, nullptr, 2);
             std::string hex_str = ss.str();
             std::cout << hex_str << std::endl;
