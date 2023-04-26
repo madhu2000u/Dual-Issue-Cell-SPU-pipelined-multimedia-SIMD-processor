@@ -98,7 +98,7 @@ parameter flaoting_multiply = 11'b01011000110;
 parameter multiply = 11'b01111000100;
 parameter multiply_unsigned = 11'b01111001100;
 parameter multiply_immediate = 8'b01110100;
-parameter multiply_unsigned_immediate = 8'b01110100;
+parameter multiply_unsigned_immediate = 8'b01110101;
 parameter multiply_and_add = 4'b1100;
 
 //Byte
@@ -109,18 +109,18 @@ parameter sum_bytes_into_halfword = 11'b01001010011;
 
 // //Permute 
 parameter shift_left_quadword_by_bits = 11'b00111011011;
-parameter shift_left_quadword_by_bits_immediate = 9'b111111011;
-parameter shift_left_quadword_by_bytes = 9'b111011111;
-parameter shift_left_quadword_by_bytes_immediate = 9'b111111111;
-parameter shift_left_quadword_by_bytes_from_bit_shift_count = 9'b111001111;
-parameter rotate_quadword_by_bytes = 9'b111011100;
-parameter rotate_quadword_by_bytes_immediate = 9'b111111100;
-parameter rotate_quadword_by_bytes_from_bit_shift_count = 9'b111001100;
-parameter rotate_quadword_by_bits = 9'b111011000;
-parameter rotate_quadword_by_bits_immediate = 9'b111111000;
-parameter gather_bits_from_bytes = 9'b110110010;
-parameter gather_bits_from_halfword = 9'b110110001;
-parameter gather_bits_from_words = 9'b110110000;
+parameter shift_left_quadword_by_bits_immediate = 11'b00111111011;
+parameter shift_left_quadword_by_bytes = 11'b00111011111;
+parameter shift_left_quadword_by_bytes_immediate = 11'b00111111111;
+parameter shift_left_quadword_by_bytes_from_bit_shift_count = 11'b00111001111;
+parameter rotate_quadword_by_bytes = 11'b00111011100;
+parameter rotate_quadword_by_bytes_immediate = 11'b00111111100;
+parameter rotate_quadword_by_bytes_from_bit_shift_count = 11'b00111001100;
+parameter rotate_quadword_by_bits = 11'b00111011000;
+parameter rotate_quadword_by_bits_immediate = 11'b00111111000;
+parameter gather_bits_from_bytes = 11'b00110110010;
+parameter gather_bits_from_halfword = 11'b00110110001;
+parameter gather_bits_from_words =11'b00110110000;
 parameter shuffle_bytes = 4'b1011;
 
 
@@ -237,7 +237,7 @@ typedef enum logic [0 : 6] {
     ROTATE_QUADWORD_BY_BITS = 7'd78,
     ROTATE_QUADWORD_BY_BITS_IMMEDIATE = 7'd79,
     GATHER_BITS_FROM_BYTES = 7'd80,
-    GATHER_BITS_FROM_HALFWORD = 7'd81,
+    GATHER_BITS_FROM_HALFWORD = 7'd81, 
     GATHER_BITS_FROM_WORDS = 7'd82,
     SHUFFLE_BYTES = 7'd83,
 
