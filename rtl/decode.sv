@@ -95,6 +95,17 @@ module decode (
     logic [0 : UNIT_ID_SIZE - 1]            dec_instr1_unitId_even, dec_instr1_unitId_odd, dec_instr2_unitId_even, dec_instr2_unitId_odd;
     logic [0 : UNIT_ID_SIZE - 1]            issue_unitId_even, issue_unitId_odd;
 
+    logic [0:20] instr_ROM_br [0:7] = {
+        {branch_relative ,  BRANCH_RELATIVE ,  1'b0, 1'b0, 3'd7},
+        {branch_absolute ,  BRANCH_ABSOLUTE ,  1'b0, 1'b0, 3'd7},
+        {branch_relative_and_set_link ,  BRANCH_RELATIVE_AND_SET_LINK ,  1'b0, 1'b1, 3'd7},
+        {branch_absolute_and_set_link ,  BRANCH_ABSOLUTE_AND_SET_LINK ,  1'b0, 1'b1, 3'd7},
+        {branch_if_not_zero_word ,  BRANCH_IF_NOT_ZERO_WORD ,  1'b0, 1'b0, 3'd7},
+        {branch_if_zero_word ,  BRANCH_IF_ZERO_WORD ,  1'b0, 1'b0, 3'd7},
+        {branch_if_not_zero_halfword ,  BRANCH_IF_NOT_ZERO_HALFWORD ,  1'b0, 1'b0, 3'd7},
+        {branch_if_zero_halfword ,  BRANCH_IF_ZERO_HALFWORD ,  1'b0, 1'b0, 3'd7}
+    };
+
     logic [0:15] instr_ROM_4 [0:4] = {
         {floating_multiply_and_add ,  FLOATING_MULTIPLY_AND_ADD ,  1'b1, 1'b1, 3'd4},
         {floating_negative_multiply_and_substract ,  FLOATING_NEGATIVE_MULTIPLY_AND_SUBSTRACT ,  1'b1, 1'b1, 3'd4},
@@ -127,19 +138,11 @@ module decode (
         {load_quadword_d ,  LOAD_QUADWORD_D ,  1'b0, 1'b1, 3'd6},
         {store_quadword_d ,  STORE_QUADWORD_D ,  1'b0, 1'b0, 3'd6}
     };
-    logic [0:20] instr_ROM_9 [0:11] = {
+    logic [0:20] instr_ROM_9 [0:3] = {
         {load_quadword_a ,  LOAD_QUADWORD_A ,  1'b0, 1'b1, 3'd6},
         {store_quadword_a ,  STORE_QUADWORD_A ,  1'b0, 1'b0, 3'd6},
         {immediate_load_halfword ,  IMMEDIATE_LOAD_HALFWORD ,  1'b0, 1'b1, 3'd6},
-        {immediate_load_word ,  IMMEDIATE_LOAD_WORD ,  1'b0, 1'b1, 3'd6},
-        {branch_relative ,  BRANCH_RELATIVE ,  1'b0, 1'b0, 3'd7},
-        {branch_absolute ,  BRANCH_ABSOLUTE ,  1'b0, 1'b0, 3'd7},
-        {branch_relative_and_set_link ,  BRANCH_RELATIVE_AND_SET_LINK ,  1'b0, 1'b1, 3'd7},
-        {branch_absolute_and_set_link ,  BRANCH_ABSOLUTE_AND_SET_LINK ,  1'b0, 1'b1, 3'd7},
-        {branch_if_not_zero_word ,  BRANCH_IF_NOT_ZERO_WORD ,  1'b0, 1'b0, 3'd7},
-        {branch_if_zero_word ,  BRANCH_IF_ZERO_WORD ,  1'b0, 1'b0, 3'd7},
-        {branch_if_not_zero_halfword ,  BRANCH_IF_NOT_ZERO_HALFWORD ,  1'b0, 1'b0, 3'd7},
-        {branch_if_zero_halfword ,  BRANCH_IF_ZERO_HALFWORD ,  1'b0, 1'b0, 3'd7}
+        {immediate_load_word ,  IMMEDIATE_LOAD_WORD ,  1'b0, 1'b1, 3'd6}
     };
     logic [0:22] instr_ROM_11 [0:57] = { //EVEN = 1, ODD = 0;
         //{opcoe, bit-padding, internal_opcode, even-odd bit, regWr-bit, unitID}
@@ -212,8 +215,16 @@ module decode (
     always_comb begin : Decoder_Route_Logic
             //instr1 decode
             for (int i = 0; i < 96; i++) begin
+                if(instr1[0:8] == instr_ROM_br[i][0:8]) begin
+                    dec_instr1_imm16_odd = instr1[9:24];
+                    dec_instr1_addr_rt_wt_odd = instr1[25:31];
+                    // b = instr_ROM_9[i][9 +: INTERNAL_OPCODE_SIZE];
+                    dec_instr1_opcode_odd = instr_ROM_br[i][9 +: INTERNAL_OPCODE_SIZE];
+                    instr1_pipe = 0;
+                    dec_instr1_regWr_odd = instr_ROM_br[i][17];
+                end
                 //RR_RI7 type (11-bit opcode)
-                if(instr1[0:10] == instr_ROM_11[i][0:10]) begin
+                else if(instr1[0:10] == instr_ROM_11[i][0:10]) begin
                     if(instr_ROM_11[i][18]) begin
                         dec_instr1_addr_ra_rd_even = instr1[18:24];
                         dec_instr1_addr_rb_rd_even = instr1[11:17];
@@ -443,66 +454,66 @@ module decode (
                     // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    // (instr1[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    (instr1[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    //TODO: remove branche because only one branch stage and then directly yo forward(instr1[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
                     (instr1[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE])) begin
@@ -518,35 +529,35 @@ module decode (
             else if(instr1[0:7] == instr_ROM_8[i][0:7]) begin
                 if( (instr1[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
                     (instr1[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE])) begin
@@ -561,103 +572,103 @@ module decode (
             else if(instr1[0:3] == instr_ROM_4[i][0:3]) begin
                 if( (instr1[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
                     (instr1[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr1[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr1[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
                     (instr1[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr1[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr1[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
                     (instr1[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr1[25:31] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[25:31] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[25:31] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[25:31] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr1[25:31] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr1[25:31] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr1[25:31] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr1[25:31] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr1[25:31] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr1[25:31] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr1[25:31] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr1[25:31] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr1[25:31] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr1[25:31] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE])) begin
@@ -674,71 +685,72 @@ module decode (
         for (int i = 0; i < 96; i++) begin
             if(instr2[0:10] == instr_ROM_11[i][0:10]) begin
                 //RAW hazard check for instruction 2
-                if( (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if( (instr1[25:31] == instr2[11:17] || instr1[25:31] == instr2[18:24]) ||
+                    (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
                     (instr2[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) || 
@@ -757,35 +769,35 @@ module decode (
             else if(instr2[0:7] == instr_ROM_8[i][0:7]) begin
                 if( (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
@@ -803,103 +815,103 @@ module decode (
             else if(instr2[0:3] == instr_ROM_4[i][0:3]) begin
                 if( (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr2[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
                     (instr2[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr2[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
                     (instr2[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[25:31] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == byte_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[25:31] == byte_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == fx2_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage1_result    [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == fx2_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage2_result    [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
+                    // (instr2[25:31] == fx2_stage3_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx2_stage3_result    [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_fp_stage1_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage1_result  [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_fp_stage2_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage2_result  [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_fp_stage3_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage3_result  [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_fp_stage4_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage4_result  [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_fp_stage5_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage5_result  [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
+                    // (instr2[25:31] == sp_fp_stage6_result  [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_fp_stage6_result  [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_int_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_int_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_int_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage3_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_int_stage4_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage4_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_int_stage5_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage5_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == sp_int_stage6_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage6_result [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
+                    // (instr2[25:31] == sp_int_stage7_result [REG_ADDR +: REG_ADDR_WIDTH]) && (sp_int_stage7_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == perm_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage1_result   [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == perm_stage2_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage2_result   [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
+                    // (instr2[25:31] == perm_stage3_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (perm_stage3_result   [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == ls_stage1_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage1_result     [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == ls_stage2_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage2_result     [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == ls_stage3_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage3_result     [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == ls_stage4_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage4_result     [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == ls_stage5_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage5_result     [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
+                    // (instr2[25:31] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
@@ -915,18 +927,6 @@ module decode (
                     end
 
             end
-
-            // else if (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
-            //         ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd))) begin
-            //     dep_stall_instr2 = 1;
-            // end 
-            // else dep_stall_instr2 = 0;
-
-            // if (((instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd) == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && 
-            //         (instr1_pipe ? dec_instr1_regWr_even:dec_instr1_regWr_odd) && dec_instr2_regWr_even) begin
-            //     dep_stall_instr2 = 1;
-            // end
-            // else dep_stall_instr2 = 0;
 
         end
 
@@ -998,6 +998,7 @@ module decode (
                     issue_imm10_even <= dec_instr1_imm10_even;
 
                     issue_regWr_even <= dec_instr1_regWr_even;
+                    issue_regWr_odd <= 0;
                     
                 end
                 else begin
@@ -1019,6 +1020,7 @@ module decode (
                     issue_imm18_odd <= dec_instr1_imm18_odd;
 
                     issue_regWr_odd <= dec_instr1_regWr_odd;
+                    issue_regWr_even <= 0;
                 end
         end
         else begin
