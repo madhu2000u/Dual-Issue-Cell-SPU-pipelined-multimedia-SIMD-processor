@@ -13,7 +13,7 @@ module oddPipe (
     flush,
     unit_id,
     PC,
-    PC_out,
+    BTA,
     br_first_instr,
     branch_taken,
     ra_rd_odd,
@@ -65,7 +65,7 @@ logic [0 : QUADWORD - 1] ls_data_rd, rt_wt_odd;
 output logic branch_taken, flush;
 output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD)-1] perm_stage1_result, perm_stage2_result, ls_stage1_result, ls_stage2_result, ls_stage3_result, ls_stage4_result, ls_stage5_result, branch_stage1_result, branch_stage2_result;
 output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD)-1] perm_stage3_result, ls_stage6_result, branch_stage3_result;
-output logic [0:WORD-1] PC_out;
+output logic [0:WORD-1] BTA;        //Branch Target Address
 //output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD + WORD + 1)-1] ls_stage6_result;
 
 always_comb begin : oddPipeExecution 
@@ -359,7 +359,7 @@ always_comb begin : oddPipeExecution
     //branch
     BRANCH_RELATIVE : begin
                     x1 = {imm16,2'b0};
-                    PC_out = PC + ({{14{x1[0]}},x1});
+                    BTA = PC + ({{14{x1[0]}},x1});
                     regWr_en_odd = 1'b0;
                     branch_taken = 1;
                     flush = br_first_instr;
@@ -367,7 +367,7 @@ always_comb begin : oddPipeExecution
                     end
     BRANCH_ABSOLUTE : begin
                     x1 = {imm16,2'b0};
-                    PC_out = ({{14{x1[0]}},x1});
+                    BTA = ({{14{x1[0]}},x1});
                     regWr_en_odd = 1'b0;
                     branch_taken = 1;
                     flush = br_first_instr;
@@ -377,7 +377,7 @@ always_comb begin : oddPipeExecution
                     rt_wt_odd[0:31] = (PC + 4) & LSLR;
                     rt_wt_odd[32:127] = 96'd0;
                     x1 = {imm16,2'b0};
-                    PC_out = PC + $signed(({{14{x1[0]}},x1}));
+                    BTA = PC + $signed(({{14{x1[0]}},x1}));
                     regWr_en_odd = 1'b1;
                     branch_taken = 1;
                     flush = br_first_instr;
@@ -387,7 +387,7 @@ always_comb begin : oddPipeExecution
                                     rt_wt_odd[0:31] = (PC + 4) & LSLR;
                                     rt_wt_odd[32:127] = 96'd0;  
                                     x1 = {imm16,2'b0};
-                                    PC_out = ({{14{x1[0]}},x1});  
+                                    BTA = ({{14{x1[0]}},x1});  
                                     regWr_en_odd = 1'b1; 
                                     branch_taken = 1;  
                                     flush = br_first_instr;
@@ -396,12 +396,12 @@ always_comb begin : oddPipeExecution
     BRANCH_IF_NOT_ZERO_WORD : begin 
                             if (rc_rd_odd[0:31] != 0) begin
                                     x1 = {imm16,2'b0};
-                                    PC_out = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;
+                                    BTA = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;
                                     branch_taken = 1;
                                     flush = br_first_instr;
                             end   
                             else begin
-                                    PC_out = PC + 4;
+                                    BTA = PC + 4;
                                     branch_taken = 0;
                                     flush = 0;
                             end
@@ -411,12 +411,12 @@ always_comb begin : oddPipeExecution
     BRANCH_IF_ZERO_WORD : begin
                         if (rc_rd_odd[0:31] == 0) begin
                                     x1 = {imm16,2'b0};
-                                    PC_out = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
+                                    BTA = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
                                     branch_taken = 1;
                                     flush = br_first_instr;
                             end   
                             else begin
-                                    PC_out = PC + 4;
+                                    BTA = PC + 4;
                                     branch_taken = 0;
                                     flush = 0;
                             end
@@ -426,12 +426,12 @@ always_comb begin : oddPipeExecution
     BRANCH_IF_NOT_ZERO_HALFWORD : begin
                                     if (rc_rd_odd[16:31] != 0) begin
                                         x1 = {imm16,2'b0};
-                                        PC_out = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
+                                        BTA = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC;  
                                         branch_taken = 1;
                                         flush = br_first_instr;
                                     end   
                                     else begin
-                                        PC_out = PC + 4;
+                                        BTA = PC + 4;
                                         branch_taken = 0;
                                         flush = 0;
                                     end
@@ -441,12 +441,12 @@ always_comb begin : oddPipeExecution
     BRANCH_IF_ZERO_HALFWORD : begin
                                 if (rc_rd_odd[16:31] == 0) begin
                                     x1 = {imm16,2'b0};
-                                    PC_out = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC; 
+                                    BTA = (PC + ({{14{x1[0]}},x1})) & 32'hFFFFFFFC; 
                                     branch_taken = 1; 
                                     flush = br_first_instr;
                                     end   
                                 else begin
-                                    PC_out = PC + 4;
+                                    BTA = PC + 4;
                                     branch_taken = 0;
                                     flush = 0;
                                 end

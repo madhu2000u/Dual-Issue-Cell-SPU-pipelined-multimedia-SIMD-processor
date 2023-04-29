@@ -92,6 +92,8 @@ module decode (
     logic [0 : IMM18 - 1]            dec_instr1_imm18_odd, dec_instr2_imm18_odd;
     logic                                   dec_instr1_regWr_even, dec_instr1_regWr_odd, dec_instr2_regWr_even, dec_instr2_regWr_odd;
     logic                                   issue_regWr_even, issue_regWr_odd;
+    logic [0 : UNIT_ID_SIZE - 1]            dec_instr1_unitId_even, dec_instr1_unitId_odd, dec_instr2_unitId_even, dec_instr2_unitId_odd;
+    logic [0 : UNIT_ID_SIZE - 1]            issue_unitId_even, issue_unitId_odd;
 
     logic [0:15] instr_ROM_4 [0:4] = {
         {floating_multiply_and_add ,  FLOATING_MULTIPLY_AND_ADD ,  1'b1, 1'b1, 3'd4},

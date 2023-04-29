@@ -27,7 +27,7 @@ module spuMainModule (
     // rf_imm10_odd,
     // rf_imm16_odd,
     // rf_imm18_odd,
-    PC_out,
+    BTA,
     branch_taken,
     br_first_instr,
     init,
@@ -46,7 +46,7 @@ module spuMainModule (
     
 
     output branch_taken;
-    output [0 : WORD - 1]                   PC_out;
+    output [0 : WORD - 1]                   BTA;    //Branch Target Address
 
     input init, init2; //TODO: testing purposes
 
@@ -98,7 +98,7 @@ module spuMainModule (
         imm18_odd <= rf_imm18_odd;
     end
 
-    instrFetch instrFetch (clk, reset, PC, instr1, instr2, dep_stall_instr1, dep_stall_instr2);
+    instrFetch instrFetch (clk, reset, PC, branch_taken, BTA, instr1, instr2, dep_stall_instr1, dep_stall_instr2);
     
     decode decode (clk, reset, instr1, instr2, dep_stall_instr1, dep_stall_instr2, issue_even_opcode, issue_odd_opcode,
         addr_ra_rd_even,
@@ -190,7 +190,7 @@ module spuMainModule (
         sp_int_stage7_result
     );
 
-    oddPipe oddPipe (clk, reset, flush, unit_id, PC, PC_out, br_first_instr, branch_taken, fw_ra_rd_odd_out, fw_rb_rd_odd_out, fw_rc_rd_odd_out, addr_rt_wt_odd, opcode_odd, imm7_odd, imm10_odd, imm16_odd, imm18_odd, 
+    oddPipe oddPipe (clk, reset, flush, unit_id, PC, BTA, br_first_instr, branch_taken, fw_ra_rd_odd_out, fw_rb_rd_odd_out, fw_rc_rd_odd_out, addr_rt_wt_odd, opcode_odd, imm7_odd, imm10_odd, imm16_odd, imm18_odd, 
         perm_stage1_result,
         perm_stage2_result,
         perm_stage3_result, 

@@ -278,14 +278,6 @@ module forwardMacro (
         addr_ra_rd_odd <= rf_addr_ra_rd_odd;
         addr_rb_rd_odd <= rf_addr_rb_rd_odd;
         addr_rc_rd_odd <= rf_addr_rc_rd_odd;
-
-        // ra_rd_even <= rf_ra_rd_even;
-        // rb_rd_even <= rf_rb_rd_even;
-        // rc_rd_even <= rf_rc_rd_even;
-
-        // ra_rd_odd <= rf_ra_rd_odd;
-        // rb_rd_odd <= rf_rb_rd_odd;
-        // rc_rd_odd <= rf_rc_rd_odd;
     end
 
     

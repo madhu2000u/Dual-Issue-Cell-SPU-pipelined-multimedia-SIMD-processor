@@ -217,9 +217,9 @@ std::string codegen(std::vector<std::string> parsed_instr){
     }
 }
 
-int main(){
+int main(int argc, char *argv[]){
     std::vector<std::string> parsed_instr;
-    std::string asm_file = "test.asm";
+    std::string asm_file = argv[1];
     std::ifstream infile(asm_file.c_str());
 
     if(!infile.is_open()){
@@ -237,12 +237,14 @@ int main(){
 
     std::string instr;
     std::stringstream ss;
-    std::string instr_byte; //
+    std::string instr_byte;
+    int line_count = 0;
     while (std::getline(infile, instr)){
         parser(instr, parsed_instr);    //Parse
         instr = codegen(parsed_instr);  //Codegen
+        line_count++;
         if(instr.empty()){
-            std::cerr << "Codegen couldn't generate machine code due to error. Exiting" << std::endl;
+            std::cerr << "assembler.cpp:Error at line:"<< line_count <<". Codegen couldn't generate machine code due to error. Exiting" << std::endl;
             return 1;
         }
 
@@ -262,28 +264,11 @@ int main(){
             instr_byte = "";
         }
         
-        // outfile << instr << std::endl;
-        // std::cout << instr[0:4] << std::endl;
-        // std::cout<< parsed_instr.size() << std::endl;
-        // for(const auto &item : parsed_instr){
-        //     std::cout << item << std::endl;
-        // }
         parsed_instr.clear();
         
 
-        // Write the binary value to the file
-        //std::bitset<opcode_map.at(instr).instr.length()> opcode_bits(opcode_map.at(instr));
-        // outfile << opcode_bits << std::endl;
-
     }
     
-    // Open the text file for writing
-    
-    
-    
-
-    
-    // Close the file
     infile.close();
     outfile.close();
 
