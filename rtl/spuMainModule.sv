@@ -51,7 +51,7 @@ module spuMainModule (
     input init, init2; //TODO: testing purposes
 
     //TODO: add fw_rc register
-    logic                                   dep_stall_instr2;
+    logic                                   dep_stall_instr2, dep_stall_instr1;
     logic                                   regWr_en_even, regWr_en_odd, flush;
     logic [0 : REG_ADDR_WIDTH - 1]          addr_rt_wt_even, addr_rt_wt_odd;
     logic [0 : UNIT_ID_SIZE - 1]            unit_id;
@@ -98,9 +98,9 @@ module spuMainModule (
         imm18_odd <= rf_imm18_odd;
     end
 
-    instrFetch instrFetch (clk, reset, PC, instr1, instr2, dep_stall_instr2);
+    instrFetch instrFetch (clk, reset, PC, instr1, instr2, dep_stall_instr1, dep_stall_instr2);
     
-    decode decode (clk, reset, instr1, instr2, dep_stall_instr2, issue_even_opcode, issue_odd_opcode,
+    decode decode (clk, reset, instr1, instr2, dep_stall_instr1, dep_stall_instr2, issue_even_opcode, issue_odd_opcode,
         addr_ra_rd_even,
         addr_rb_rd_even,
         addr_rc_rd_even,

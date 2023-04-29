@@ -487,20 +487,20 @@ always_ff @ ( posedge clk ) begin : oddPipeExecutionStages
     end
 
     else begin
-//Permute
-    perm_stage2_result <= perm_stage1_result;
-    perm_stage3_result <= perm_stage2_result;  
+    // Permute
+        perm_stage2_result <= perm_stage1_result;
+        perm_stage3_result <= perm_stage2_result;  
 
-//Load & Store   
-    ls_stage2_result <=  ls_stage1_result; 
-    ls_stage3_result <=  ls_stage2_result;
-    ls_stage4_result <=  ls_stage3_result;  
-    ls_stage5_result <=  ls_stage4_result;  
-    ls_stage6_result <=  ls_stage5_result;
+        //Load & Store   
+        ls_stage2_result <=  ls_stage1_result; 
+        ls_stage3_result <=  ls_stage2_result;
+        ls_stage4_result <=  ls_stage3_result;  
+        ls_stage5_result <=  ls_stage4_result;  
+        ls_stage6_result <=  ls_stage5_result;
 
-//Branch
-    branch_stage2_result <= branch_stage1_result;
-    branch_stage3_result <= branch_stage2_result;
+        //Branch
+        branch_stage2_result <= branch_stage1_result;
+        branch_stage3_result <= branch_stage2_result;
     end
 
 end

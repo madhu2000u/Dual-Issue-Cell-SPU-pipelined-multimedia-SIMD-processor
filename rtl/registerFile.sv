@@ -42,39 +42,7 @@ module registerFile (
     output logic [0:QUADWORD-1]         ra_rd_even, rb_rd_even, rc_rd_even, ra_rd_odd, rb_rd_odd, rc_rd_odd;
     
     logic [0:QUADWORD-1]                registerFile [0:REG_COUNT-1];
-    //logic regWr_en_even_internal, init;
-    //logic [0 : REG_ADDR_WIDTH - 1]      addr_rt_wt_even_internal;
-    //logic [0 : QUADWORD - 1]            rt_wt_even_internal;
-
-    //Initial testing purposes. TODO: remove later
-    // initial begin
-    //     //init = 1;
-    //     if(init == 1) begin
-    //         regWr_en_even_internal = 1;
-    //         addr_rt_wt_even_internal = 0;
-    //         rt_wt_even_internal = 128'h00000005000000070000000A0000001F;
-    //     end
-    //     else begin
-    //         regWr_en_even_internal = regWr_en_even;
-    //         addr_rt_wt_even_internal = addr_rt_wt_even;
-    //         rt_wt_even_internal = rt_wt_even;
-    //     end
-    //     //@(posedge clk);
-    //     if(init2 == 1) begin
-    //         regWr_en_even_internal = 1;
-    //         addr_rt_wt_even_internal = 3;
-    //         rt_wt_even_internal = 128'h00000005000000070000000A0000001F;
-    //     end
-    //     else begin
-    //         regWr_en_even_internal = regWr_en_even;
-    //         addr_rt_wt_even_internal = addr_rt_wt_even;
-    //         rt_wt_even_internal = rt_wt_even;
-    //     end
-    //     //@(posedge clk);
-    // end
-
     
-
     always_ff @( posedge clk ) begin : registerFileWriteLogic
         if(reset) begin
             for (int i = 0; i < REG_COUNT; i++) begin
