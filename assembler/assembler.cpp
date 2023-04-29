@@ -47,6 +47,15 @@ std::string codegen(std::vector<std::string> parsed_instr){
             //for RI7 instruction, the I7 field is at the same location and bit count as RR's rb field (check SPU ISA docs' instruction formats)
             //so doesn't matter in assembler if we put I7 values in rb field as it depends on the processor to interpret it as immediate or register field based on opcode
             {   
+                if(parsed_instr[0] == "nop" || parsed_instr[0] == "lnop"){
+                    opcode = opcode_map.at(parsed_instr[0]);
+                    rt = "0000000";
+                    rb = "0000000";
+                    ra = "0000000";
+                    final_binary_instr = opcode + rb + ra + rt;
+                    return final_binary_instr;
+                    
+                }
                 if(parsed_instr.size() != 4) { 
                     std::cerr << "invalid number of operands for instruction type RR_RI7" << std::endl; 
                     return "";
@@ -73,7 +82,7 @@ std::string codegen(std::vector<std::string> parsed_instr){
             
         
         case instrFormatOpcodeLenEnum::RRR:     //SPU interpretation: op[4-bits]rt[7]rb[7]ra[7]rc[7]  
-            {
+            {   
                 if(parsed_instr.size() != 5) { 
                     std::cerr << "invalid number of operands for instruction type RRR" << std::endl; 
                     return "";

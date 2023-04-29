@@ -25,63 +25,65 @@ module spuTb ();
     spuMainModule dut(clk,
     reset,
     unit_id,
-    opcode_even,
-    opcode_odd,
+    // opcode_even,
+    // opcode_odd,
     /*regWr_en_even,*/
-    addr_ra_rd_even,
-    addr_rb_rd_even,
-    addr_rc_rd_even,
-    addr_rt_wt_even,
-    addr_ra_rd_odd,
-    addr_rb_rd_odd,
-    addr_rc_rd_odd,
-    addr_rt_wt_odd,
-    imm7_even,
-    imm7_odd,
-    imm10_even,
-    imm10_odd,
-    imm16_odd,
-    imm18_odd,
+    // addr_ra_rd_even,
+    // addr_rb_rd_even,
+    // addr_rc_rd_even,
+    // addr_rt_wt_even,
+    // addr_ra_rd_odd,
+    // addr_rb_rd_odd,
+    // addr_rc_rd_odd,
+    // addr_rt_wt_odd,
+    // imm7_even,
+    // imm7_odd,
+    // imm10_even,
+    // imm10_odd,
+    // imm16_odd,
+    // imm18_odd,
     PC_out,
     branch_taken,
     br_first_instr,
     init,
     init2);
 
-    // initial begin
-    //     PC = 0;
-    //     repeat(100) begin
-    //         @(posedge clk);
-    //     end
-    //     $stop;
-    // end
-
-
-    int even_q[$], odd_q[$];
-
     initial begin
         reset = 1;
-        PC = 0;
         @(posedge clk);
         reset = 0;
-        unit_id = 1;
-        opcode_even = ADD_WORD_IMMEDIATE;
-        addr_ra_rd_even = 0;
-        addr_rt_wt_even = 7'd1;
-        imm10_even = -10'd5;
-        // @(posedge clk);
-        // opcode_even = ADD_WORD_IMMEDIATE;
-        // addr_ra_rd_even = 1;
-        // addr_rt_wt_even = 7'd2;
-        // imm10_even = 10'd3;
-        @(posedge clk);
-        repeat(9) begin
-            opcode_even = NOP;
-            unit_id = 0;
-            addr_rt_wt_even = 0;
+        repeat(100) begin
             @(posedge clk);
         end
+        $stop;
     end
+
+
+    // int even_q[$], odd_q[$];
+
+    // initial begin
+    //     reset = 1;
+    //     PC = 0;
+    //     @(posedge clk);
+    //     reset = 0;
+    //     unit_id = 1;
+    //     opcode_even = ADD_WORD_IMMEDIATE;
+    //     addr_ra_rd_even = 0;
+    //     addr_rt_wt_even = 7'd1;
+    //     imm10_even = -10'd5;
+    //     // @(posedge clk);
+    //     // opcode_even = ADD_WORD_IMMEDIATE;
+    //     // addr_ra_rd_even = 1;
+    //     // addr_rt_wt_even = 7'd2;
+    //     // imm10_even = 10'd3;
+    //     @(posedge clk);
+    //     repeat(9) begin
+    //         opcode_even = NOP;
+    //         unit_id = 0;
+    //         addr_rt_wt_even = 0;
+    //         @(posedge clk);
+    //     end
+    // end
     //     opcode_even = ADD_WORD_IMMEDIATE;
     //     addr_ra_rd_even = 1;
     //     addr_rt_wt_even = 7'd2;

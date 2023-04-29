@@ -10,23 +10,23 @@ module spuMainModule (
     clk,
     reset,
     rf_unit_id,
-    rf_opcode_even,
-    rf_opcode_odd,
+    // rf_opcode_even,
+    // rf_opcode_odd,
     /*regWr_en_even,*/
-    addr_ra_rd_even,
-    addr_rb_rd_even,
-    addr_rc_rd_even,
-    rf_addr_rt_wt_even,
-    addr_ra_rd_odd, 
-    addr_rb_rd_odd,
-    addr_rc_rd_odd,
-    rf_addr_rt_wt_odd,
-    rf_imm7_even,
-    rf_imm7_odd,
-    rf_imm10_even,
-    rf_imm10_odd,
-    rf_imm16_odd,
-    rf_imm18_odd,
+    // addr_ra_rd_even,
+    // addr_rb_rd_even,
+    // addr_rc_rd_even,
+    // rf_addr_rt_wt_even,
+    // addr_ra_rd_odd, 
+    // addr_rb_rd_odd,
+    // addr_rc_rd_odd,
+    // rf_addr_rt_wt_odd,
+    // rf_imm7_even,
+    // rf_imm7_odd,
+    // rf_imm10_even,
+    // rf_imm10_odd,
+    // rf_imm16_odd,
+    // rf_imm18_odd,
     PC_out,
     branch_taken,
     br_first_instr,
@@ -36,13 +36,13 @@ module spuMainModule (
     
     input                                   clk, reset, br_first_instr;
     input [0 : UNIT_ID_SIZE - 1]            rf_unit_id;
-    input [0 : INTERNAL_OPCODE_SIZE - 1]    rf_opcode_even, rf_opcode_odd;
-    input [0 : REG_ADDR_WIDTH - 1]          addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd;
-    input [0 : IMM7 - 1]                    rf_imm7_even, rf_imm7_odd;
-    input [0 : IMM10 - 1]                   rf_imm10_even, rf_imm10_odd;
-    input [0 : IMM16 - 1]                   rf_imm16_odd;              //no 16-bit immediate for even pipe instructions
-    input [0 : IMM18 - 1]                   rf_imm18_odd;           
-    input [0 : REG_ADDR_WIDTH - 1]          rf_addr_rt_wt_even, rf_addr_rt_wt_odd;
+    //input [0 : INTERNAL_OPCODE_SIZE - 1]    rf_opcode_even, rf_opcode_odd;
+    logic [0 : REG_ADDR_WIDTH - 1]          addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd;
+    logic [0 : IMM7 - 1]                    rf_imm7_even, rf_imm7_odd;
+    logic [0 : IMM10 - 1]                   rf_imm10_even, rf_imm10_odd;
+    logic [0 : IMM16 - 1]                   rf_imm16_odd;              //no 16-bit immediate for even pipe instructions
+    logic [0 : IMM18 - 1]                   rf_imm18_odd;           
+    logic [0 : REG_ADDR_WIDTH - 1]          rf_addr_rt_wt_even, rf_addr_rt_wt_odd;
     
 
     output branch_taken;
@@ -55,7 +55,7 @@ module spuMainModule (
     logic                                   regWr_en_even, regWr_en_odd, flush;
     logic [0 : REG_ADDR_WIDTH - 1]          addr_rt_wt_even, addr_rt_wt_odd;
     logic [0 : UNIT_ID_SIZE - 1]            unit_id;
-    logic [0 : INTERNAL_OPCODE_SIZE - 1]    opcode_even, opcode_odd;
+    logic [0 : INTERNAL_OPCODE_SIZE - 1]    issue_even_opcode, issue_odd_opcode, opcode_even, opcode_odd;
     logic [0 : IMM7 - 1]                    imm7_even, imm7_odd;
     logic [0 : IMM10 - 1]                   imm10_even, imm10_odd;
     logic [0 : IMM16 - 1]                   imm16_odd;
@@ -86,8 +86,8 @@ module spuMainModule (
 
     always_ff @( posedge clk ) begin : RegisterFetchStage
         unit_id <= rf_unit_id;
-        opcode_even <= rf_opcode_even;
-        opcode_odd <= rf_opcode_odd;
+        opcode_even <= issue_even_opcode;
+        opcode_odd <= issue_odd_opcode;
         addr_rt_wt_even <= rf_addr_rt_wt_even;
         addr_rt_wt_odd <= rf_addr_rt_wt_odd;
         imm7_even <= rf_imm7_even;
@@ -100,7 +100,21 @@ module spuMainModule (
 
     instrFetch instrFetch (clk, reset, PC, instr1, instr2, dep_stall_instr2);
     
-    decode decode (clk, reset, instr1, instr2, dep_stall_instr2,
+    decode decode (clk, reset, instr1, instr2, dep_stall_instr2, issue_even_opcode, issue_odd_opcode,
+        addr_ra_rd_even,
+        addr_rb_rd_even,
+        addr_rc_rd_even,
+        rf_addr_rt_wt_even,
+        addr_ra_rd_odd,
+        addr_rb_rd_odd,
+        addr_rc_rd_odd,
+        rf_addr_rt_wt_odd,
+        rf_imm7_even,
+        rf_imm7_odd,
+        rf_imm10_even,
+        rf_imm10_odd,
+        rf_imm16_odd,
+        rf_imm18_odd,
         fx1_stage1_result,
         fx1_stage2_result,
         byte_stage1_result,

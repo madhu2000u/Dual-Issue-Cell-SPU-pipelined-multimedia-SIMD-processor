@@ -136,7 +136,7 @@ parameter immediate_load_word = 9'b010000001;
 parameter immediate_load_address = 7'b0100001;
 
 
-// //Misc Instrs
+//Misc Instrs
 parameter nop = 11'b01000000001;
 parameter lnop = 11'b00000000001;
 
