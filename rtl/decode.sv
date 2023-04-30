@@ -5,6 +5,8 @@ module decode (
     instr2,
     dep_stall_instr1,
     dep_stall_instr2,
+    issue_unitId_even,
+    issue_unitId_odd,
     issue_even_opcode,
     issue_odd_opcode,
     issue_addr_ra_rd_even,
@@ -93,7 +95,7 @@ module decode (
     logic                                   dec_instr1_regWr_even, dec_instr1_regWr_odd, dec_instr2_regWr_even, dec_instr2_regWr_odd;
     logic                                   issue_regWr_even, issue_regWr_odd;
     logic [0 : UNIT_ID_SIZE - 1]            dec_instr1_unitId_even, dec_instr1_unitId_odd, dec_instr2_unitId_even, dec_instr2_unitId_odd;
-    logic [0 : UNIT_ID_SIZE - 1]            issue_unitId_even, issue_unitId_odd;
+    output logic [0 : UNIT_ID_SIZE - 1]            issue_unitId_even, issue_unitId_odd;
 
     logic [0:20] instr_ROM_br [0:7] = {
         {branch_relative ,  BRANCH_RELATIVE ,  1'b0, 1'b0, 3'd7},
@@ -233,6 +235,7 @@ module decode (
                         dec_instr1_opcode_even = instr_ROM_11[i][11 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 1;
                         dec_instr1_regWr_even = instr_ROM_11[i][19];
+                        dec_instr1_unitId_even = instr_ROM_11[i][20:22];
                     end
                     else begin
                         dec_instr1_addr_ra_rd_odd = instr1[18:24];
@@ -243,6 +246,7 @@ module decode (
                         dec_instr1_opcode_odd = instr_ROM_11[i][11 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 0;
                         dec_instr1_regWr_odd = instr_ROM_11[i][19];
+                        dec_instr1_unitId_odd = instr_ROM_11[i][20:22];
                     end                                  //TODO: instr1_pipe = instr_ROM[i][18]
                     // break;
                 end
@@ -253,6 +257,7 @@ module decode (
                         dec_instr1_opcode_even = instr_ROM_9[i][9 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 1;
                         dec_instr1_regWr_even = instr_ROM_9[i][17];
+                        dec_instr1_unitId_even = instr_ROM_11[i][18:20];
                     end
                     else begin
                         dec_instr1_imm16_odd = instr1[9:24];
@@ -261,6 +266,7 @@ module decode (
                         dec_instr1_opcode_odd = instr_ROM_9[i][9 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 0;
                         dec_instr1_regWr_odd = instr_ROM_9[i][17];
+                        dec_instr1_unitId_odd = instr_ROM_11[i][18:20];
                     end
                     // break;
                 end
@@ -274,6 +280,7 @@ module decode (
                         dec_instr1_opcode_even = instr_ROM_8[i][8 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 1;
                         dec_instr1_regWr_even = instr_ROM_8[i][16];
+                        dec_instr1_unitId_even = instr_ROM_11[i][17:19];
                     end
                     else begin
                         dec_instr1_imm10_odd = instr1[8:17];
@@ -282,6 +289,7 @@ module decode (
                         dec_instr1_opcode_odd = instr_ROM_8[i][8 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 0;
                         dec_instr1_regWr_odd = instr_ROM_8[i][16];
+                        dec_instr1_unitId_odd = instr_ROM_11[i][17:19];
                     end
                     // break;
                 end
@@ -292,6 +300,7 @@ module decode (
                         dec_instr1_opcode_even = instr_ROM_7[i][7 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 1;
                         dec_instr1_regWr_even = instr_ROM_7[i][15];
+                        dec_instr1_unitId_even = instr_ROM_11[i][16:18];
                     end
                     else begin
                         dec_instr1_imm18_odd = instr1[7:24];
@@ -299,6 +308,7 @@ module decode (
                         dec_instr1_opcode_odd = instr_ROM_7[i][7 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 0;
                         dec_instr1_regWr_odd = instr_ROM_7[i][15];
+                        dec_instr1_unitId_odd = instr_ROM_11[i][16:18];
                     end
                 //    break;
                 end
@@ -312,6 +322,7 @@ module decode (
                         dec_instr1_opcode_even = instr_ROM_4[i][4 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 1;
                         dec_instr1_regWr_even = instr_ROM_4[i][12];
+                        dec_instr1_unitId_even = instr_ROM_11[i][13:15];
                     end
                     else begin
                         dec_instr1_addr_ra_rd_odd = instr1[18:24];
@@ -322,6 +333,7 @@ module decode (
                         dec_instr1_opcode_odd = instr_ROM_4[i][4 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 0;
                         dec_instr1_regWr_odd = instr_ROM_4[i][12];
+                        dec_instr1_unitId_odd = instr_ROM_11[i][13:15];
                     end
                     // break;
                 end
@@ -344,6 +356,7 @@ module decode (
                         dec_instr2_opcode_even = instr_ROM_11[i][11 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 1;
                         dec_instr2_regWr_even = instr_ROM_11[i][19];
+                        dec_instr2_unitId_even = instr_ROM_11[i][20:22];
 
                         
                     end
@@ -355,6 +368,7 @@ module decode (
                         dec_instr2_opcode_odd = instr_ROM_11[i][11 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 0;
                         dec_instr2_regWr_odd = instr_ROM_11[i][19];
+                        dec_instr2_unitId_odd = instr_ROM_11[i][20:22];
                     end
                     // break;
                 end
@@ -365,6 +379,7 @@ module decode (
                         dec_instr2_opcode_even = instr_ROM_9[i][9 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 1;
                         dec_instr2_regWr_even = instr_ROM_9[i][17];
+                        dec_instr2_unitId_even = instr_ROM_11[i][18:20];
                     end
                     else begin
                         dec_instr2_imm16_odd = instr2[9:24];
@@ -372,6 +387,7 @@ module decode (
                         dec_instr2_opcode_odd = instr_ROM_9[i][9 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 0;
                         dec_instr2_regWr_odd = instr_ROM_9[i][17];
+                        dec_instr2_unitId_odd = instr_ROM_11[i][18:20];
                     end
                     // break;
                 end
@@ -384,6 +400,7 @@ module decode (
                         dec_instr2_opcode_even = instr_ROM_8[i][8 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 1;
                         dec_instr2_regWr_even = instr_ROM_8[i][16];
+                        dec_instr2_unitId_even = instr_ROM_11[i][17:19];
                     end
                     else begin
                         dec_instr2_imm10_odd = instr2[8:17];
@@ -392,6 +409,7 @@ module decode (
                         dec_instr2_opcode_odd = instr_ROM_8[i][8 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 0;
                         dec_instr2_regWr_odd = instr_ROM_8[i][16];
+                        dec_instr2_unitId_odd = instr_ROM_11[i][17:19];
                     end
                     // break;
                 end
@@ -402,6 +420,7 @@ module decode (
                         dec_instr2_opcode_even = instr_ROM_7[i][7 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 1;
                         dec_instr2_regWr_even = instr_ROM_7[i][15];
+                        dec_instr2_unitId_even = instr_ROM_11[i][16:18];
                     end
                     else begin
                         dec_instr2_imm18_odd = instr2[7:24];
@@ -409,6 +428,7 @@ module decode (
                         dec_instr2_opcode_odd = instr_ROM_7[i][7 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 0;
                         dec_instr2_regWr_odd = instr_ROM_7[i][15];
+                        dec_instr2_unitId_odd = instr_ROM_11[i][16:18];
                     end
                 //    break;
                 end
@@ -422,6 +442,7 @@ module decode (
                         dec_instr2_opcode_even = instr_ROM_4[i][4 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 1;
                         dec_instr2_regWr_even = instr_ROM_4[i][12];
+                        dec_instr2_unitId_even = instr_ROM_11[i][13:15];
                     end
                     else begin
                         dec_instr2_addr_ra_rd_odd = instr2[18:24];
@@ -432,6 +453,7 @@ module decode (
                         dec_instr2_opcode_odd = instr_ROM_4[i][4 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 0;
                         dec_instr2_regWr_odd = instr_ROM_4[i][12];
+                        dec_instr2_unitId_odd = instr_ROM_11[i][13:15];
                     end
                     // break;
                 end
@@ -978,6 +1000,8 @@ module decode (
             issue_imm18_odd <= 0;
             issue_regWr_even <= 0;
             issue_regWr_odd <= 0;
+            issue_unitId_even <= 0;
+            issue_unitId_odd <= 0;
         end
         else if (dep_stall_instr2 && !dep_stall_instr1) begin
             // if(!issue_done) begin
@@ -1035,6 +1059,8 @@ module decode (
                     issue_imm10_even <= dec_instr1_imm10_even;
                     
                     issue_regWr_even <= dec_instr1_regWr_even;
+
+                    issue_unitId_even <= dec_instr1_unitId_even;
                 end
                 else begin
                     issue_odd_opcode <= dec_instr1_opcode_odd;
@@ -1049,6 +1075,8 @@ module decode (
                     issue_imm18_odd <= dec_instr1_imm18_odd;
                     
                     issue_regWr_odd <= dec_instr1_regWr_odd;
+
+                    issue_unitId_odd <= dec_instr1_unitId_odd;
                     
                 end
 
@@ -1063,6 +1091,8 @@ module decode (
                     issue_imm10_even <= dec_instr2_imm10_even;
 
                     issue_regWr_even <= dec_instr2_regWr_even;
+
+                    issue_unitId_even <= dec_instr1_unitId_even;
                 end
                 else begin
                     issue_odd_opcode <= dec_instr2_opcode_odd;
@@ -1077,6 +1107,8 @@ module decode (
                     issue_imm18_odd <= dec_instr2_imm18_odd;
 
                     issue_regWr_odd <= dec_instr2_regWr_odd;
+
+                    issue_unitId_odd <= dec_instr1_unitId_odd;
                 end
         
             

@@ -1,11 +1,7 @@
-ai 
-a 5,6,7
-sfi 3,5,7
-rotqby 10, 0, 13
-lnop
-nop
-lnop
-nop
-lnop
-nop
-lnop
+il 1,1
+il 2,2
+il 3,3
+il 6,6
+mpy 4,1,2
+rot 5,4,3
+a 7,8,9

@@ -4,7 +4,7 @@ module spuTb ();
     
     logic                                   clk, reset;
     logic                                   br_first_instr;    //This signal sent by decode stage indicates to the execution stage if the first instruction of the dual-fetch (in order) is branch or not. If branch is taken (which will be found out later in the execution stages in oddPipe, it has to flush off the following instruction that was issued into the even pipe since it is the wrong instruction after branch is taken)
-    logic [0 : UNIT_ID_SIZE - 1]            unit_id;
+    logic [0 : UNIT_ID_SIZE - 1]            unit_id_even, unit_id_odd;
     logic [0 : INTERNAL_OPCODE_SIZE - 1]    opcode_even, opcode_odd;
     logic [0 : REG_ADDR_WIDTH - 1]          addr_ra_rd_even, addr_rb_rd_even, addr_rc_rd_even, addr_ra_rd_odd, addr_rb_rd_odd, addr_rc_rd_odd;
     logic [0 : IMM7 - 1]                    imm7_even, imm7_odd;
@@ -24,7 +24,10 @@ module spuTb ();
 
     spuMainModule dut(clk,
     reset,
-    unit_id,
+    // unit_id_even,
+    // unit_id_odd,
+    // opcode_even,
+    // opcode_even,
     // opcode_even,
     // opcode_odd,
     /*regWr_en_even,*/
