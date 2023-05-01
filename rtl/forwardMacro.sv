@@ -36,7 +36,7 @@ module forwardMacro (
 
     input clk, reset;
     input logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1]    fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result, branch_stage3_result;
-    logic [0 : REG_ADDR_WIDTH - 1] fw_ra_rd_even, fw_rb_rd_even, fw_rc_rd_even, fw_ra_rd_odd, fw_rb_rd_odd, fw_rc_rd_odd;
+    logic [0 : QUADWORD - 1] fw_ra_rd_even, fw_rb_rd_even, fw_rc_rd_even, fw_ra_rd_odd, fw_rb_rd_odd, fw_rc_rd_odd;
     //input logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD + WORD + 1)-1] ls_stage6_result;
 
     output logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1]   FWE8, FWO8;
@@ -270,7 +270,7 @@ module forwardMacro (
 
         fw_ra_rd_odd_out <= fw_ra_rd_odd;
         fw_rb_rd_odd_out <= fw_rb_rd_odd;
-        fw_rc_rd_odd_out <= fw_ddr_rc_rd_odd;
+        fw_rc_rd_odd_out <= fw_rc_rd_odd;
     end
 
     
