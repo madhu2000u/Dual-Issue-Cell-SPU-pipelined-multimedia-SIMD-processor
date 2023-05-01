@@ -712,7 +712,7 @@ module evenPipe (
                         end
                         MULTIPLY_AND_ADD: begin
                             for (int i = 0; i <= 3; i++) begin
-                                rt_wt_even[WORD * i +: WORD] = $signed(ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) * $signed(rb_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) + $signed(rc_rd_even[WORD * (i + 1) +: WORD]);
+                                rt_wt_even[WORD * i +: WORD] = $signed(ra_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) * $signed(rb_rd_even[(WORD * i) + HALFWORD +: HALFWORD]) + $signed(rc_rd_even[WORD * i +: WORD]);
                             end
                             regWr_en_even = 1;
                             sp_int_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
