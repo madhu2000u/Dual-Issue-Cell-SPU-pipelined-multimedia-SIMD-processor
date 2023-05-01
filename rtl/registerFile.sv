@@ -50,18 +50,20 @@ module registerFile (
             end
         end
 
-        ra_rd_even <= registerFile[addr_ra_rd_even];
-        rb_rd_even <= registerFile[addr_rb_rd_even];
-        rc_rd_even <= registerFile[addr_rc_rd_even];
-        ra_rd_odd <= registerFile[addr_ra_rd_odd];
-        rb_rd_odd <= registerFile[addr_rb_rd_odd];
-        rc_rd_odd <= registerFile[addr_rc_rd_odd];
-        
         if(regWr_en_even)
             registerFile[addr_rt_wt_even] <= rt_wt_even;
         
         if(regWr_en_odd)
             registerFile[addr_rt_wt_odd] <= rt_wt_odd;
+    end
+
+    always_comb begin
+        ra_rd_even = registerFile[addr_ra_rd_even];
+        rb_rd_even = registerFile[addr_rb_rd_even];
+        rc_rd_even = registerFile[addr_rc_rd_even];
+        ra_rd_odd = registerFile[addr_ra_rd_odd];
+        rb_rd_odd = registerFile[addr_rb_rd_odd];
+        rc_rd_odd = registerFile[addr_rc_rd_odd];
     end
 
 endmodule

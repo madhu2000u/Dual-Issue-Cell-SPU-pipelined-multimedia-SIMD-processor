@@ -97,15 +97,26 @@ module decode (
     logic [0 : UNIT_ID_SIZE - 1]            dec_instr1_unitId_even, dec_instr1_unitId_odd, dec_instr2_unitId_even, dec_instr2_unitId_odd;
     output logic [0 : UNIT_ID_SIZE - 1]            issue_unitId_even, issue_unitId_odd;
 
-    logic [0:20] instr_ROM_br [0:7] = {
-        {branch_relative ,  BRANCH_RELATIVE ,  1'b0, 1'b0, 3'd7},
-        {branch_absolute ,  BRANCH_ABSOLUTE ,  1'b0, 1'b0, 3'd7},
+    logic [0:22] instr_ROM_st_qw_x [0:0] = {
+        {store_quadword_x ,   STORE_QUADWORD_X ,  1'b0, 1'b0, 3'd6}
+    };
+    logic [0:20] instrt_ROM_st_qw_a [0:0] = {
+        {store_quadword_a ,  STORE_QUADWORD_A ,  1'b0, 1'b0, 3'd6}
+    };
+    logic [0:19] instr_ROM_st_qw_d [0:0] = {
+        {store_quadword_d ,  STORE_QUADWORD_D ,  1'b0, 1'b0, 3'd6}
+    };
+    logic [0:20] instr_ROM_br_rt_src [0:5] = {
         {branch_relative_and_set_link ,  BRANCH_RELATIVE_AND_SET_LINK ,  1'b0, 1'b1, 3'd7},
         {branch_absolute_and_set_link ,  BRANCH_ABSOLUTE_AND_SET_LINK ,  1'b0, 1'b1, 3'd7},
         {branch_if_not_zero_word ,  BRANCH_IF_NOT_ZERO_WORD ,  1'b0, 1'b0, 3'd7},
         {branch_if_zero_word ,  BRANCH_IF_ZERO_WORD ,  1'b0, 1'b0, 3'd7},
         {branch_if_not_zero_halfword ,  BRANCH_IF_NOT_ZERO_HALFWORD ,  1'b0, 1'b0, 3'd7},
         {branch_if_zero_halfword ,  BRANCH_IF_ZERO_HALFWORD ,  1'b0, 1'b0, 3'd7}
+    };
+    logic [0:20] instr_ROM_br [0:7] = {
+        {branch_relative ,  BRANCH_RELATIVE ,  1'b0, 1'b0, 3'd7},
+        {branch_absolute ,  BRANCH_ABSOLUTE ,  1'b0, 1'b0, 3'd7}
     };
 
     logic [0:15] instr_ROM_4 [0:4] = {
@@ -118,7 +129,7 @@ module decode (
     logic [0:18] instr_ROM_7 [0:0] = {
         {immediate_load_address,  IMMEDIATE_LOAD_ADDRESS ,  1'b0, 1'b1, 3'd6}
     };
-    logic [0:19] instr_ROM_8[0:19] = {
+    logic [0:19] instr_ROM_8[0:18] = {
         {add_word_immediate ,  ADD_WORD_IMMEDIATE ,  1'b1, 1'b1, 3'd1},
         {subtract_from_word_immediate ,  SUBTRACT_FROM_WORD_IMMEDIATE,  1'b1, 1'b1, 3'd1},
         {add_halfword_immediate ,  ADD_HALFWORD_IMMEDIATE,  1'b1, 1'b1, 3'd1},
@@ -137,12 +148,10 @@ module decode (
         {compare_logical_greater_than_word_immediate ,  COMPARE_LOGICAL_GREATER_THAN_WORD_IMMEDIATE ,  1'b1, 1'b1, 3'd1},
         {multiply_immediate ,  MULTIPLY_IMMEDIATE ,  1'b1, 1'b1, 3'd4},
         {multiply_unsigned_immediate ,  MULTIPLY_UNSIGNED_IMMEDIATE ,  1'b1, 1'b1, 3'd4},
-        {load_quadword_d ,  LOAD_QUADWORD_D ,  1'b0, 1'b1, 3'd6},
-        {store_quadword_d ,  STORE_QUADWORD_D ,  1'b0, 1'b0, 3'd6}
+        {load_quadword_d ,  LOAD_QUADWORD_D ,  1'b0, 1'b1, 3'd6}
     };
     logic [0:20] instr_ROM_9 [0:3] = {
         {load_quadword_a ,  LOAD_QUADWORD_A ,  1'b0, 1'b1, 3'd6},
-        {store_quadword_a ,  STORE_QUADWORD_A ,  1'b0, 1'b0, 3'd6},
         {immediate_load_halfword ,  IMMEDIATE_LOAD_HALFWORD ,  1'b0, 1'b1, 3'd6},
         {immediate_load_word ,  IMMEDIATE_LOAD_WORD ,  1'b0, 1'b1, 3'd6}
     };
@@ -204,7 +213,6 @@ module decode (
         {gather_bits_from_halfword ,  GATHER_BITS_FROM_HALFWORD ,  1'b0, 1'b1, 3'd5},
         {gather_bits_from_words ,  GATHER_BITS_FROM_WORDS ,  1'b0, 1'b1, 3'd5},
         {load_quadword_x ,   LOAD_QUADWORD_X ,  1'b0, 1'b1, 3'd6},
-        {store_quadword_x ,   STORE_QUADWORD_X ,  1'b0, 1'b0, 3'd6},
         {nop ,   NOP ,  1'b1, 1'b0, 3'd0},
         {lnop ,   LNOP ,  1'b0, 1'b0, 3'd0}
 
