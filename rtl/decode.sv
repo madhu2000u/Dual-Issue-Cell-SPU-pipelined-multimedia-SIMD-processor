@@ -1,6 +1,8 @@
 module decode (
     clk,
     reset,
+    stop_and_signal, stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9,
+    issue_br_first_instr,
     instr1_dec_input,
     instr2,
     dep_stall_instr1,
@@ -74,10 +76,12 @@ module decode (
 
     input [0 : WORD - 1] instr1_dec_input, instr2;
     logic issue_done;
+    output logic stop_and_signal, stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9;
     output logic dep_stall_instr2, dep_stall_instr1;
     output logic [0 : INTERNAL_OPCODE_SIZE - 1] issue_even_opcode, issue_odd_opcode;   //both conntected to even and odd pipe RESPECTIVELY.
     logic instr1_pipe, instr2_pipe;  //1 => even, 0 => odd
     logic br_first_instr;
+    output logic issue_br_first_instr;
     logic [0 : INTERNAL_OPCODE_SIZE - 1]    a,b,c,d,e,dec_instr1_opcode_even, dec_instr1_opcode_odd, dec_instr2_opcode_even, dec_instr2_opcode_odd, opcode_even, opcode_odd;
     output logic [0 : IMM7 - 1]             issue_imm7_even, issue_imm7_odd;
     output logic [0 : IMM10 - 1]            issue_imm10_even, issue_imm10_odd;
@@ -132,7 +136,7 @@ module decode (
         {shuffle_bytes ,  SHUFFLE_BYTES ,  1'b0, 1'b1, 3'd5}
     };
     logic [0:18] instr_ROM_7 [0:0] = {
-        {immediate_load_address,  IMMEDIATE_LOAD_ADDRESS ,  1'b0, 1'b1, 3'd6}
+        {immediate_load_address,  IMMEDIATE_LOAD_ADDRESS ,  1'b1, 1'b1, 3'd6}
     };
     logic [0:19] instr_ROM_8[0:18] = {
         {add_word_immediate ,  ADD_WORD_IMMEDIATE ,  1'b1, 1'b1, 3'd1},
@@ -165,8 +169,8 @@ module decode (
         // {branch_relative ,  BRANCH_RELATIVE ,  1'b0, 1'b0, 3'd7},
         // {branch_absolute ,  BRANCH_ABSOLUTE ,  1'b0, 1'b0, 3'd7},
         {load_quadword_a ,  LOAD_QUADWORD_A ,  1'b0, 1'b1, 3'd6},
-        {immediate_load_halfword ,  IMMEDIATE_LOAD_HALFWORD ,  1'b0, 1'b1, 3'd6},
-        {immediate_load_word ,  IMMEDIATE_LOAD_WORD ,  1'b0, 1'b1, 3'd6}
+        {immediate_load_halfword ,  IMMEDIATE_LOAD_HALFWORD ,  1'b1, 1'b1, 3'd6},
+        {immediate_load_word ,  IMMEDIATE_LOAD_WORD ,  1'b1, 1'b1, 3'd6}
     };
     logic [0:22] instr_ROM_11 [0:56] = { //EVEN = 1, ODD = 0;
         //{opcoe, bit-padding, internal_opcode, even-odd bit, regWr-bit, unitID}
@@ -236,6 +240,10 @@ module decode (
     //logic [0:6] array_even [0:2] = '{fx1_stage1_result[UNIT_ID_SIZE + 1 +: REG_ADDR_WIDTH], fx1_stage2_result[UNIT_ID_SIZE + 1 +: REG_ADDR_WIDTH], byte_stage1_result[UNIT_ID_SIZE + 1 +: REG_ADDR_WIDTH]} ;
 
     always_comb begin : Decoder_Route_Logic
+            if(instr1[0:10] == stop_and_signal || instr2[0:10] == stop_and_signal) begin
+                stop_and_signal = 1;
+            end
+            else stop_and_signal = 0;
             //instr1 decode
             for (int i = 0; i < 96; i++) begin
                 if(instr1[0:8] == instr_ROM_br[i][0:8]) begin
@@ -414,7 +422,7 @@ module decode (
                     dec_instr2_regWr_odd = instr_ROM_br[i][17];
                     br_first_instr = 0;
                 end
-                if(instr2[0:8] == instr_ROM_br_rt_src[i][0:8]) begin
+                else if(instr2[0:8] == instr_ROM_br_rt_src[i][0:8]) begin
                     dec_instr2_imm16_odd = instr2[9:24];
                     dec_instr2_addr_rc_rd_odd = instr2[25:31]; //the RT specified as per SPU ISA is actually the source register for these specefic instructions
                     dec_instr2_opcode_odd = instr_ROM_br_rt_src[i][9 +: INTERNAL_OPCODE_SIZE];
@@ -452,7 +460,7 @@ module decode (
                     dec_instr2_unitId_odd = instr_ROM_st_qw_d[i][17:19];
                 end
                 //RR_RI7 type (11-bit opcode)
-                if(instr2[0:10] == instr_ROM_11[i][0:10]) begin
+                else if(instr2[0:10] == instr_ROM_11[i][0:10]) begin
                     // $display("%d", instr_ROM[i]);
                     if(instr_ROM_11[i][18]) begin
                         
@@ -587,7 +595,7 @@ module decode (
         //RAW hazard check for instruction 1 - if hazard, stall both because SPU is in-order-execution
         for (int i = 0; i < 96; i++) begin
             if(instr1[0:10] == instr_ROM_st_qw_x[i][0:10]) begin    //this has rt as source
-                if( (instr1[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if( ((instr1[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -622,7 +630,7 @@ module decode (
                     (instr1[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr1[11:17] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr1[11:17] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -657,7 +665,7 @@ module decode (
                     (instr1[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr1[25:31] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[25:31] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr1[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (inst25[31:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -701,7 +709,7 @@ module decode (
             end
 
             else if(instr1[0:8] == instrt_ROM_st_qw_a[i][0:8] || instr1[0:8] == instr_ROM_br_rt_src[i][0:8]) begin    //this has rt as source
-                if((instr1[25:31] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[25:31] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if(((instr1[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (inst25[31:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -744,7 +752,7 @@ module decode (
                     end
             end
             else if(instr1[0:7] == instr_ROM_st_qw_d[i][0:7]) begin
-                if((instr1[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if(((instr1[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -779,7 +787,7 @@ module decode (
                     (instr1[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr1[25:31] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[25:31] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr1[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (inst25[31:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -824,7 +832,7 @@ module decode (
 
             else if(instr1[0:10] == instr_ROM_11[i][0:10]) begin
                 if(instr1[0:10] == add_extended || instr1[0:10] == subtract_from_extended) begin
-                    if ((instr1[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    if (((instr1[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                         (instr1[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                         // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                         (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -859,7 +867,7 @@ module decode (
                         (instr1[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                         (instr1[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                         //
-                        (instr1[11:17] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                        ((instr1[11:17] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                         (instr1[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                         // (instr1[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                         (instr1[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -894,6 +902,7 @@ module decode (
                         (instr1[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                         (instr1[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                         //
+                        ((instr1[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                         (instr1[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                         // (instr1[25:31] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                         (instr1[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -935,7 +944,7 @@ module decode (
                             dep_stall_instr2 = 0;
                         end
                 end
-                else if( (instr1[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                else if( ((instr1[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -970,7 +979,7 @@ module decode (
                     (instr1[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr1[11:17] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr1[11:17] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1014,7 +1023,7 @@ module decode (
             end
 
             else if(instr1[0:7] == instr_ROM_8[i][0:7]) begin
-                if( (instr1[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if( ((instr1[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1058,7 +1067,7 @@ module decode (
             end
 
             else if(instr1[0:3] == instr_ROM_4[i][0:3]) begin
-                if( (instr1[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr1[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if( ((instr1[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1093,6 +1102,7 @@ module decode (
                     (instr1[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
+                    ((instr1[11:17] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1127,6 +1137,7 @@ module decode (
                     (instr1[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr1[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
+                    ((instr1[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr1[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr1[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr1[25:31] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr1[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1168,13 +1179,14 @@ module decode (
                         dep_stall_instr2 = 0;
                     end
             end
+            else dep_stall_instr1 = 0;
         end
 
         //RAW, WAW and Strutural Hazard check for instruction 2
         for (int i = 0; i < 96; i++) begin
             if(instr2[0:10] == instr_ROM_st_qw_x[i][0:10]) begin    //this has rt as source
-                if( (instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if( ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1209,8 +1221,8 @@ module decode (
                     (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr2[11:17] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[11:17] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr2[11:17] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[11:17] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1245,8 +1257,8 @@ module decode (
                     (instr2[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[25:31] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[25:31] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (inst25[31:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1279,7 +1291,10 @@ module decode (
                     // (inst25[31:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     //TODO: 25m31e branche because only one branch stage and then directly yo forward(instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE])) begin
+                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
+                    (instr1_pipe == instr2_pipe) ||
+                    (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
+                    ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin
                         dep_stall_instr2 = 1;
                     end
                     else begin
@@ -1288,8 +1303,8 @@ module decode (
             end
             
             else if(instr2[0:8] == instrt_ROM_st_qw_a[i][0:8] || instr2[0:8] == instr_ROM_br_rt_src[i][0:8]) begin    //this has rt as source
-                if((instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) || //RAW in same stage decode
-                    (instr2[25:31] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[25:31] == issue_addr_rt_wt_odd && issue_regWr_odd) ||   //RAW in RF stage with the instr in decode
+                if(((instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) || //RAW in same stage decode
+                    ((instr2[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||   //RAW in RF stage with the instr in decode
                     (instr2[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (inst25[31:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1322,7 +1337,10 @@ module decode (
                     // (inst25[31:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     //TODO: 25m31e branche because only one branch stage and then directly yo forward(instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE])) begin
+                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
+                    (instr1_pipe == instr2_pipe) ||
+                    (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
+                    ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin
                         dep_stall_instr2 = 1;
                     end
                     else begin
@@ -1330,8 +1348,8 @@ module decode (
                     end
             end
             else if(instr2[0:7] == instr_ROM_st_qw_d[i][0:7]) begin
-                if( (instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if( ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1366,8 +1384,8 @@ module decode (
                     (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[25:31] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[25:31] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (inst25[31:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1413,8 +1431,8 @@ module decode (
             else if(instr2[0:10] == instr_ROM_11[i][0:10]) begin
                 //RAW hazard check for instruction 2
                 if(instr2[0:10] == add_extended || instr2[0:10] == subtract_from_extended) begin
-                    if ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                        (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    if (((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                        ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                         (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                         // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                         (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1449,8 +1467,8 @@ module decode (
                         (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                         (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                         //
-                        (instr2[11:17] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                        (instr2[11:17] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                        ((instr2[11:17] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                        ((instr2[11:17] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                         (instr2[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                         // (instr2[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                         (instr2[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1485,8 +1503,8 @@ module decode (
                         (instr2[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                         (instr2[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                         //
-                        (instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                        (instr2[25:31] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                        ((instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                        ((instr2[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                         (instr2[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                         // (instr2[25:31] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                         (instr2[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1529,8 +1547,8 @@ module decode (
                             dep_stall_instr2 = 0;
                         end
                 end
-                else if((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                else if(((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1565,8 +1583,8 @@ module decode (
                     (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr2[11:17] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[11:17] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr2[11:17] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[11:17] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1620,10 +1638,18 @@ module decode (
                 end
                 else dep_stall_instr2 = 0;
             end
+            else if(instr2[0:6] == instr_ROM_7[i][0:6]) begin
+                if (instr1_pipe == instr2_pipe ||
+                    (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
+                    ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin
+                    dep_stall_instr2 = 1;
+                end
+                else dep_stall_instr2 = 0;
+            end
 
             else if(instr2[0:7] == instr_ROM_8[i][0:7]) begin
-                if( (instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if( ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1670,8 +1696,8 @@ module decode (
             end
 
             else if(instr2[0:3] == instr_ROM_4[i][0:3]) begin
-                if( (instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[18:24] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[18:24] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                if( ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1706,8 +1732,8 @@ module decode (
                     (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr2[11:17] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[11:17] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr2[11:17] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[11:17] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[11:17] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[11:17] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1742,8 +1768,8 @@ module decode (
                     (instr2[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
                     //
-                    (instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
-                    (instr2[25:31] == issue_addr_rt_wt_even && issue_regWr_even) || (instr2[11:17] == issue_addr_rt_wt_odd && issue_regWr_odd) ||
+                    ((instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    ((instr2[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[11:17] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[25:31] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == byte_stage1_result   [REG_ADDR +: REG_ADDR_WIDTH]) && (byte_stage1_result   [UNIT_ID_SIZE]) ||
@@ -1789,7 +1815,6 @@ module decode (
                     end
 
             end
-            else dep_stall_instr2 = 0;
 
         end
 
@@ -1812,6 +1837,15 @@ module decode (
     always_ff @(posedge clk ) begin : IssueLogicController
         if(reset)
             issue_done <= 0;
+            stop1 <= 0;
+            stop2 <= 0;
+            stop3 <= 0;
+            stop4 <= 0;
+            stop5 <= 0;
+            stop6 <= 0;
+            stop7 <= 0;
+            stop8 <= 0;
+            stop9 <= 0;
         else begin
             if(dep_stall_instr2 && !dep_stall_instr1 && !issue_done) begin
                 issue_done <= 1;
@@ -1819,144 +1853,156 @@ module decode (
             else if(!dep_stall_instr2 && issue_done)begin
                 issue_done <= 0;
             end
+
+            stop1 <= stop_and_signal;
+            stop2 <= stop1;
+            stop3 <= stop2;
+            stop4 <= stop3;
+            stop5 <= stop4;
+            stop6 <= stop5;
+            stop7 <= stop6;
+            stop8 <= stop7;
+            stop9 <= stop8;
         end
+        if(!stop_and_signal) begin
+            if(dep_stall_instr1 || branch_taken) begin
+                issue_even_opcode <= NOP;
+                issue_odd_opcode <= LNOP;
+                issue_addr_ra_rd_even <= 0;
+                issue_addr_rb_rd_even <= 0;
+                issue_addr_rc_rd_even <= 0;
+                issue_addr_ra_rd_odd <= 0;
+                issue_addr_rb_rd_odd <= 0;
+                issue_addr_rc_rd_odd <= 0; //Decoder output
+                issue_addr_rc_rd_odd <= 0;
+                issue_addr_rt_wt_even <= 0;
+                issue_addr_rt_wt_odd <= 0;
+                issue_imm7_even <= 0;
+                issue_imm7_odd <= 0;
+                issue_imm10_even <= 0;
+                issue_imm10_odd <= 0;
+                issue_imm16_odd <= 0;
+                issue_imm18_odd <= 0;
+                issue_regWr_even <= 0;
+                issue_regWr_odd <= 0;
+                issue_unitId_even <= 0;
+                issue_unitId_odd <= 0;
+            end
+            else if (dep_stall_instr2 && !dep_stall_instr1) begin
+                // if(!issue_done) begin
+                    if(instr1_pipe) begin
+                        issue_even_opcode <= dec_instr1_opcode_even;       //issue_even_opcode always connected to even pipe and same for odd
+                        issue_addr_ra_rd_even <= dec_instr1_addr_ra_rd_even;      //TODO: no need of issue_addr_....., just pass dec_addr_... as output to this module, only opcode requires that issue since we need to route it. //Updated, NO-TODO: actually it is required since it is a stage - should go throught the register at posedge to next stage.
+                        issue_addr_rb_rd_even <= dec_instr1_addr_rb_rd_even;
+                        issue_addr_rc_rd_even <= dec_instr1_addr_rc_rd_even;
+                        issue_addr_rt_wt_even <= dec_instr1_addr_rt_wt_even;
 
-        if(dep_stall_instr1) begin
-            issue_even_opcode <= NOP;
-            issue_odd_opcode <= LNOP;
-            issue_addr_ra_rd_even <= 0;
-            issue_addr_rb_rd_even <= 0;
-            issue_addr_rc_rd_even <= 0;
-            issue_addr_ra_rd_odd <= 0;
-            issue_addr_rb_rd_odd <= 0;
-            issue_addr_rc_rd_odd <= 0; //Decoder output
-            issue_addr_rc_rd_odd <= 0;
-            issue_addr_rt_wt_even <= 0;
-            issue_addr_rt_wt_odd <= 0;
-            issue_imm7_even <= 0;
-            issue_imm7_odd <= 0;
-            issue_imm10_even <= 0;
-            issue_imm10_odd <= 0;
-            issue_imm16_odd <= 0;
-            issue_imm18_odd <= 0;
-            issue_regWr_even <= 0;
-            issue_regWr_odd <= 0;
-            issue_unitId_even <= 0;
-            issue_unitId_odd <= 0;
-        end
-        else if (dep_stall_instr2 && !dep_stall_instr1) begin
-            // if(!issue_done) begin
-                if(instr1_pipe) begin
-                    issue_even_opcode <= dec_instr1_opcode_even;       //issue_even_opcode always connected to even pipe and same for odd
-                    issue_addr_ra_rd_even <= dec_instr1_addr_ra_rd_even;      //TODO: no need of issue_addr_....., just pass dec_addr_... as output to this module, only opcode requires that issue since we need to route it. //Updated, NO-TODO: actually it is required since it is a stage - should go throught the register at posedge to next stage.
-                    issue_addr_rb_rd_even <= dec_instr1_addr_rb_rd_even;
-                    issue_addr_rc_rd_even <= dec_instr1_addr_rc_rd_even;
-                    issue_addr_rt_wt_even <= dec_instr1_addr_rt_wt_even;
+                        issue_odd_opcode <= LNOP;
+                        issue_addr_ra_rd_odd <= 0;
+                        issue_addr_rb_rd_odd <= 0;
+                        issue_addr_rc_rd_odd <= 0;
+                        issue_addr_rt_wt_odd <= 0;
 
-                    issue_odd_opcode <= LNOP;
-                    issue_addr_ra_rd_odd <= 0;
-                    issue_addr_rb_rd_odd <= 0;
-                    issue_addr_rc_rd_odd <= 0;
-                    issue_addr_rt_wt_odd <= 0;
+                        issue_imm7_even <= dec_instr1_imm7_even;
+                        issue_imm10_even <= dec_instr1_imm10_even;
 
-                    issue_imm7_even <= dec_instr1_imm7_even;
-                    issue_imm10_even <= dec_instr1_imm10_even;
+                        issue_regWr_even <= dec_instr1_regWr_even;
+                        issue_regWr_odd <= 0;
 
-                    issue_regWr_even <= dec_instr1_regWr_even;
-                    issue_regWr_odd <= 0;
+                        issue_unitId_even <= dec_instr1_unitId_even;
+                        
+                    end
+                    else begin
+                        issue_odd_opcode <= dec_instr1_opcode_odd;        //think of criss-cross routing
+                        issue_addr_ra_rd_odd <= dec_instr1_addr_ra_rd_odd;
+                        issue_addr_rb_rd_odd <= dec_instr1_addr_rb_rd_odd;
+                        issue_addr_rc_rd_odd <= dec_instr1_addr_rc_rd_odd;
+                        issue_addr_rt_wt_odd <= dec_instr1_addr_rt_wt_odd;
 
-                    issue_unitId_even <= dec_instr1_unitId_even;
-                    
-                end
-                else begin
-                    issue_odd_opcode <= dec_instr1_opcode_odd;        //think of criss-cross routing
-                    issue_addr_ra_rd_odd <= dec_instr1_addr_ra_rd_odd;
-                    issue_addr_rb_rd_odd <= dec_instr1_addr_rb_rd_odd;
-                    issue_addr_rc_rd_odd <= dec_instr1_addr_rc_rd_odd;
-                    issue_addr_rt_wt_odd <= dec_instr1_addr_rt_wt_odd;
+                        issue_even_opcode <= NOP;
+                        issue_addr_ra_rd_even <= 0;
+                        issue_addr_rb_rd_even <= 0;
+                        issue_addr_rc_rd_even <= 0;
+                        issue_addr_rt_wt_even <= 0;
 
-                    issue_even_opcode <= NOP;
-                    issue_addr_ra_rd_even <= 0;
-                    issue_addr_rb_rd_even <= 0;
-                    issue_addr_rc_rd_even <= 0;
-                    issue_addr_rt_wt_even <= 0;
+                        issue_imm7_odd <= dec_instr1_imm7_odd;
+                        issue_imm10_odd <= dec_instr1_imm10_odd;
+                        issue_imm16_odd <= dec_instr1_imm16_odd;
+                        issue_imm18_odd <= dec_instr1_imm18_odd;
 
-                    issue_imm7_odd <= dec_instr1_imm7_odd;
-                    issue_imm10_odd <= dec_instr1_imm10_odd;
-                    issue_imm16_odd <= dec_instr1_imm16_odd;
-                    issue_imm18_odd <= dec_instr1_imm18_odd;
+                        issue_regWr_odd <= dec_instr1_regWr_odd;
+                        issue_regWr_even <= 0;
 
-                    issue_regWr_odd <= dec_instr1_regWr_odd;
-                    issue_regWr_even <= 0;
+                        issue_unitId_odd <= dec_instr1_unitId_odd;
+                    end
+            end
+            else begin
+                    issue_br_first_instr <= br_first_instr;
+                    if(instr1_pipe) begin
+                        issue_even_opcode <= dec_instr1_opcode_even;
+                        issue_addr_ra_rd_even <= dec_instr1_addr_ra_rd_even;
+                        issue_addr_rb_rd_even <= dec_instr1_addr_rb_rd_even;
+                        issue_addr_rc_rd_even <= dec_instr1_addr_rc_rd_even;
+                        issue_addr_rt_wt_even <= dec_instr1_addr_rt_wt_even;
+                        
+                        issue_imm7_even <= dec_instr1_imm7_even;
+                        issue_imm10_even <= dec_instr1_imm10_even;
+                        
+                        issue_regWr_even <= dec_instr1_regWr_even;
 
-                    issue_unitId_odd <= dec_instr1_unitId_odd;
-                end
-        end
-        else begin
-                if(instr1_pipe) begin
-                    issue_even_opcode <= dec_instr1_opcode_even;
-                    issue_addr_ra_rd_even <= dec_instr1_addr_ra_rd_even;
-                    issue_addr_rb_rd_even <= dec_instr1_addr_rb_rd_even;
-                    issue_addr_rc_rd_even <= dec_instr1_addr_rc_rd_even;
-                    issue_addr_rt_wt_even <= dec_instr1_addr_rt_wt_even;
-                    
-                    issue_imm7_even <= dec_instr1_imm7_even;
-                    issue_imm10_even <= dec_instr1_imm10_even;
-                    
-                    issue_regWr_even <= dec_instr1_regWr_even;
+                        issue_unitId_even <= dec_instr1_unitId_even;
+                    end
+                    else begin
+                        issue_odd_opcode <= dec_instr1_opcode_odd;
+                        issue_addr_ra_rd_odd <= dec_instr1_addr_ra_rd_odd;
+                        issue_addr_rb_rd_odd <= dec_instr1_addr_rb_rd_odd;
+                        issue_addr_rc_rd_odd <= dec_instr1_addr_rc_rd_odd;
+                        issue_addr_rt_wt_odd <= dec_instr1_addr_rt_wt_odd;
+                        
+                        issue_imm7_odd <= dec_instr1_imm7_odd;
+                        issue_imm10_odd <= dec_instr1_imm10_odd;
+                        issue_imm16_odd <= dec_instr1_imm16_odd;
+                        issue_imm18_odd <= dec_instr1_imm18_odd;
+                        
+                        issue_regWr_odd <= dec_instr1_regWr_odd;
 
-                    issue_unitId_even <= dec_instr1_unitId_even;
-                end
-                else begin
-                    issue_odd_opcode <= dec_instr1_opcode_odd;
-                    issue_addr_ra_rd_odd <= dec_instr1_addr_ra_rd_odd;
-                    issue_addr_rb_rd_odd <= dec_instr1_addr_rb_rd_odd;
-                    issue_addr_rc_rd_odd <= dec_instr1_addr_rc_rd_odd;
-                    issue_addr_rt_wt_odd <= dec_instr1_addr_rt_wt_odd;
-                    
-                    issue_imm7_odd <= dec_instr1_imm7_odd;
-                    issue_imm10_odd <= dec_instr1_imm10_odd;
-                    issue_imm16_odd <= dec_instr1_imm16_odd;
-                    issue_imm18_odd <= dec_instr1_imm18_odd;
-                    
-                    issue_regWr_odd <= dec_instr1_regWr_odd;
+                        issue_unitId_odd <= dec_instr1_unitId_odd;
+                        
+                    end
 
-                    issue_unitId_odd <= dec_instr1_unitId_odd;
-                    
-                end
+                    if(instr2_pipe) begin
+                        issue_even_opcode <= dec_instr2_opcode_even;
+                        issue_addr_ra_rd_even <= dec_instr2_addr_ra_rd_even;
+                        issue_addr_rb_rd_even <= dec_instr2_addr_rb_rd_even;
+                        issue_addr_rc_rd_even <= dec_instr2_addr_rc_rd_even;
+                        issue_addr_rt_wt_even <= dec_instr2_addr_rt_wt_even;
+                        
+                        issue_imm7_even <= dec_instr2_imm7_even;
+                        issue_imm10_even <= dec_instr2_imm10_even;
 
-                if(instr2_pipe) begin
-                    issue_even_opcode <= dec_instr2_opcode_even;
-                    issue_addr_ra_rd_even <= dec_instr2_addr_ra_rd_even;
-                    issue_addr_rb_rd_even <= dec_instr2_addr_rb_rd_even;
-                    issue_addr_rc_rd_even <= dec_instr2_addr_rc_rd_even;
-                    issue_addr_rt_wt_even <= dec_instr2_addr_rt_wt_even;
-                    
-                    issue_imm7_even <= dec_instr2_imm7_even;
-                    issue_imm10_even <= dec_instr2_imm10_even;
+                        issue_regWr_even <= dec_instr2_regWr_even;
 
-                    issue_regWr_even <= dec_instr2_regWr_even;
+                        issue_unitId_even <= dec_instr2_unitId_even;
+                    end
+                    else begin
+                        issue_odd_opcode <= dec_instr2_opcode_odd;
+                        issue_addr_ra_rd_odd <= dec_instr2_addr_ra_rd_odd;
+                        issue_addr_rb_rd_odd <= dec_instr2_addr_rb_rd_odd;
+                        issue_addr_rc_rd_odd <= dec_instr2_addr_rc_rd_odd;
+                        issue_addr_rt_wt_odd <= dec_instr2_addr_rt_wt_odd;
+                        
+                        issue_imm7_odd <= dec_instr2_imm7_odd;
+                        issue_imm10_odd <= dec_instr2_imm10_odd;
+                        issue_imm16_odd <= dec_instr2_imm16_odd;
+                        issue_imm18_odd <= dec_instr2_imm18_odd;
 
-                    issue_unitId_even <= dec_instr1_unitId_even;
-                end
-                else begin
-                    issue_odd_opcode <= dec_instr2_opcode_odd;
-                    issue_addr_ra_rd_odd <= dec_instr2_addr_ra_rd_odd;
-                    issue_addr_rb_rd_odd <= dec_instr2_addr_rb_rd_odd;
-                    issue_addr_rc_rd_odd <= dec_instr2_addr_rc_rd_odd;
-                    issue_addr_rt_wt_odd <= dec_instr2_addr_rt_wt_odd;
-                    
-                    issue_imm7_odd <= dec_instr2_imm7_odd;
-                    issue_imm10_odd <= dec_instr2_imm10_odd;
-                    issue_imm16_odd <= dec_instr2_imm16_odd;
-                    issue_imm18_odd <= dec_instr2_imm18_odd;
+                        issue_regWr_odd <= dec_instr2_regWr_odd;
 
-                    issue_regWr_odd <= dec_instr2_regWr_odd;
-
-                    issue_unitId_odd <= dec_instr1_unitId_odd;
-                end
-        
+                        issue_unitId_odd <= dec_instr2_unitId_odd;
+                    end
             
+                
+            end
         end
     end
 

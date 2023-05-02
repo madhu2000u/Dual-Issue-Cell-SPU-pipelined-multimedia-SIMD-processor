@@ -1,6 +1,7 @@
 module instrFetch (
     clk,
     reset,
+    stop_and_signal,
     PC,
     branch_taken,
     BTA,
@@ -11,7 +12,7 @@ module instrFetch (
 
 );
 
-input clk, reset, branch_taken, dep_stall_instr1, dep_stall_instr2;
+input clk, reset, stop_and_signal branch_taken, dep_stall_instr1, dep_stall_instr2;
 input [0 : WORD - 1] BTA;
 logic [0 : WORD - 1] instr1_read, instr2_read;
 output logic [0 : WORD - 1] PC, instr1, instr2;
@@ -43,8 +44,8 @@ always_ff @( posedge clk ) begin : instrFetch
     if(reset) begin
         PC <= 0;
     end
-    else begin
-        if((!dep_stall_instr1 && !dep_stall_instr2) && !branch_taken) begin
+    else if(!stop_and_signal) begin
+        if((!dep_stall_instr1 && !dep_stall_instr2) || !branch_taken) begin
             if(!PC[29]) 
                 PC <= PC + 8;
             else 

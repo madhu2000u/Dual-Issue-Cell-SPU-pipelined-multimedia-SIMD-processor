@@ -1,6 +1,7 @@
 module evenPipe (
     clk,
     reset,
+    stop3, stop4, stop5, stop6, stop7, stop8,
     flush,
     unit_id,
     opcode,
@@ -33,7 +34,7 @@ module evenPipe (
     sp_int_stage6_result,
     sp_int_stage7_result
 );
-    input clk, reset, flush;
+    input clk, reset, stop3, stop4, stop5, stop6, stop7, stop8, flush;
     input [0 : UNIT_ID_SIZE - 1] unit_id;
     input [0 : INTERNAL_OPCODE_SIZE - 1] opcode;
     input signed [0 : QUADWORD - 1] ra_rd_even, rb_rd_even, rc_rd_even;
@@ -717,6 +718,31 @@ module evenPipe (
                             regWr_en_even = 1;
                             sp_int_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                         end
+                    IMMEDIATE_LOAD_HALFWORD : begin
+                        s0 = imm16;
+                        for (int i = 0 ; i<8 ; i++) begin
+                            rt_wt_odd[16*i +:16] = s0;
+                        end
+                        //RT = localstore
+                        regWr_en_odd = 1'b1;
+                        fx1_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                    end 
+                    IMMEDIATE_LOAD_WORD : begin
+                        y = {{16{imm16[0]}},imm16};
+                        for (int i = 0 ; i<4 ; i++) begin
+                            rt_wt_odd[32*i +:32] = y;
+                        end
+                        regWr_en_odd = 1'b1;
+                        fx1_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                    end                  
+                    IMMEDIATE_LOAD_ADDRESS : begin
+                        y = {14'b0,imm18};
+                        for (int i = 0 ; i<4 ; i++) begin
+                            rt_wt_odd[32*i +:32] = y;
+                        end
+                        regWr_en_odd = 1'b1;
+                        fx1_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                    end
                         NOP: begin
                             regWr_en_even = 0;
                             rt_wt_even = 0;
@@ -763,30 +789,30 @@ module evenPipe (
         end
         else begin
         //Simple Fixed Unit 1
-            fx1_stage2_result <= fx1_stage1_result;
+            if(!stop3) fx1_stage2_result <= fx1_stage1_result;
 
             //Byte Unit
-            byte_stage2_result <= byte_stage1_result;
-            byte_stage3_result <= byte_stage2_result;
+            if(!stop3) byte_stage2_result <= byte_stage1_result;
+            if(!stop4) byte_stage3_result <= byte_stage2_result;
 
             //Simple Fixed Unit 2
-            fx2_stage2_result <= fx2_stage1_result;
-            fx2_stage3_result <= fx2_stage2_result;
+            if(!stop3) fx2_stage2_result <= fx2_stage1_result;
+            if(!stop4) fx2_stage3_result <= fx2_stage2_result;
 
             //Single Precision Floating Point
-            sp_fp_stage2_result <= sp_fp_stage1_result;
-            sp_fp_stage3_result <= sp_fp_stage2_result;
-            sp_fp_stage4_result <= sp_fp_stage3_result;
-            sp_fp_stage5_result <= sp_fp_stage4_result;
-            sp_fp_stage6_result <= sp_fp_stage5_result;
+            if(!stop3) sp_fp_stage2_result <= sp_fp_stage1_result;
+            if(!stop4) sp_fp_stage3_result <= sp_fp_stage2_result;
+            if(!stop5) sp_fp_stage4_result <= sp_fp_stage3_result;
+            if(!stop6) sp_fp_stage5_result <= sp_fp_stage4_result;
+            if(!stop7) sp_fp_stage6_result <= sp_fp_stage5_result;
             
             //Single Precision Interger
-            sp_int_stage2_result <= sp_int_stage1_result;
-            sp_int_stage3_result <= sp_int_stage2_result;
-            sp_int_stage4_result <= sp_int_stage3_result;
-            sp_int_stage5_result <= sp_int_stage4_result;
-            sp_int_stage6_result <= sp_int_stage5_result;
-            sp_int_stage7_result <= sp_int_stage6_result;
+            if(!stop3) sp_int_stage2_result <= sp_int_stage1_result;
+            if(!stop4) sp_int_stage3_result <= sp_int_stage2_result;
+            if(!stop5) sp_int_stage4_result <= sp_int_stage3_result;
+            if(!stop6) sp_int_stage5_result <= sp_int_stage4_result;
+            if(!stop7) sp_int_stage6_result <= sp_int_stage5_result;
+            if(!stop8) sp_int_stage7_result <= sp_int_stage6_result;
         end
    end
 

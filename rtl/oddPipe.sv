@@ -10,6 +10,7 @@ Date: March 03, 2023
 module oddPipe (
     clk,
     reset,
+    stop3, stop4, stop5, stop6, stop7,
     flush,
     unit_id,
     PC,
@@ -39,7 +40,7 @@ module oddPipe (
     branch_stage2_result,
     branch_stage3_result
     );
-input clk, reset, br_first_instr;
+input clk, reset, stop3, stop4, stop5, stop6, stop7, br_first_instr;
 input [0 : UNIT_ID_SIZE - 1] unit_id;
 input [0 : INTERNAL_OPCODE_SIZE - 1] opcode;
 input signed [0:QUADWORD - 1] ra_rd_odd, rb_rd_odd, rc_rd_odd;
@@ -304,31 +305,31 @@ always_comb begin : oddPipeExecution
                         regWr_en_odd = 1'b1;
                         ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
                     end 
-    IMMEDIATE_LOAD_HALFWORD : begin
-                        s0 = imm16;
-                        for (int i = 0 ; i<8 ; i++) begin
-                            rt_wt_odd[16*i +:16] = s0;
-                        end
-                        //RT = localstore
-                        regWr_en_odd = 1'b1;
-                        ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
-                    end 
-    IMMEDIATE_LOAD_WORD : begin
-                        y = {{16{imm16[0]}},imm16};
-                        for (int i = 0 ; i<4 ; i++) begin
-                            rt_wt_odd[32*i +:32] = y;
-                        end
-                        regWr_en_odd = 1'b1;
-                        ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
-                    end                  
-    IMMEDIATE_LOAD_ADDRESS : begin
-                        y = {14'b0,imm18};
-                        for (int i = 0 ; i<4 ; i++) begin
-                            rt_wt_odd[32*i +:32] = y;
-                        end
-                        regWr_en_odd = 1'b1;
-                        ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
-                        end
+    // IMMEDIATE_LOAD_HALFWORD : begin
+    //                     s0 = imm16;
+    //                     for (int i = 0 ; i<8 ; i++) begin
+    //                         rt_wt_odd[16*i +:16] = s0;
+    //                     end
+    //                     //RT = localstore
+    //                     regWr_en_odd = 1'b1;
+    //                     ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+    //                 end 
+    // IMMEDIATE_LOAD_WORD : begin
+    //                     y = {{16{imm16[0]}},imm16};
+    //                     for (int i = 0 ; i<4 ; i++) begin
+    //                         rt_wt_odd[32*i +:32] = y;
+    //                     end
+    //                     regWr_en_odd = 1'b1;
+    //                     ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+    //                 end                  
+    // IMMEDIATE_LOAD_ADDRESS : begin
+    //                     y = {14'b0,imm18};
+    //                     for (int i = 0 ; i<4 ; i++) begin
+    //                         rt_wt_odd[32*i +:32] = y;
+    //                     end
+    //                     regWr_en_odd = 1'b1;
+    //                     ls_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+    //                     end
     STORE_QUADWORD_D : begin
                     x0 = {imm10,4'b0};
                     y = {{18{x0[0]}},x0};
@@ -359,7 +360,7 @@ always_comb begin : oddPipeExecution
     //branch
     BRANCH_RELATIVE : begin
                     x1 = {imm16,2'b0};
-                    BTA = PC + ({{14{x1[0]}},x1});
+                    BTA = (PC + ({{14{x1[0]}},x1})) & LSLR;
                     regWr_en_odd = 1'b0;
                     branch_taken = 1;
                     flush = br_first_instr;
@@ -367,7 +368,7 @@ always_comb begin : oddPipeExecution
                     end
     BRANCH_ABSOLUTE : begin
                     x1 = {imm16,2'b0};
-                    BTA = ({{14{x1[0]}},x1});
+                    BTA = ({{14{x1[0]}},x1}) & LSLR;
                     regWr_en_odd = 1'b0;
                     branch_taken = 1;
                     flush = br_first_instr;
@@ -377,7 +378,7 @@ always_comb begin : oddPipeExecution
                     rt_wt_odd[0:31] = (PC + 4) & LSLR;
                     rt_wt_odd[32:127] = 96'd0;
                     x1 = {imm16,2'b0};
-                    BTA = PC + $signed(({{14{x1[0]}},x1}));
+                    BTA = (PC + $signed(({{14{x1[0]}},x1}))) & LSLR;
                     regWr_en_odd = 1'b1;
                     branch_taken = 1;
                     flush = br_first_instr;
@@ -387,12 +388,19 @@ always_comb begin : oddPipeExecution
                                     rt_wt_odd[0:31] = (PC + 4) & LSLR;
                                     rt_wt_odd[32:127] = 96'd0;  
                                     x1 = {imm16,2'b0};
-                                    BTA = ({{14{x1[0]}},x1});  
+                                    BTA = ({{14{x1[0]}},x1}) & LSLR;  
                                     regWr_en_odd = 1'b1; 
                                     branch_taken = 1;  
                                     flush = br_first_instr;
                                     branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};                             
-                                    end 
+                                    end
+    BRANCH_INDIRECT : begin
+        BTA = ra_rd_odd[0 : WORD - 1] & LSLR & 32'hFFFFFFFC;
+        regWr_en_odd = 1'b0;
+        branch_taken = 1;
+        flush = br_first_instr;
+        branch_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd}; 
+    end 
     BRANCH_IF_NOT_ZERO_WORD : begin 
                             if (rc_rd_odd[0:31] != 0) begin
                                     x1 = {imm16,2'b0};
@@ -488,19 +496,19 @@ always_ff @ ( posedge clk ) begin : oddPipeExecutionStages
 
     else begin
     // Permute
-        perm_stage2_result <= perm_stage1_result;
-        perm_stage3_result <= perm_stage2_result;  
+        if(!stop3) perm_stage2_result <= perm_stage1_result;
+        if(!stop4) perm_stage3_result <= perm_stage2_result;  
 
         //Load & Store   
-        ls_stage2_result <=  ls_stage1_result; 
-        ls_stage3_result <=  ls_stage2_result;
-        ls_stage4_result <=  ls_stage3_result;  
-        ls_stage5_result <=  ls_stage4_result;  
-        ls_stage6_result <=  ls_stage5_result;
+        if(!stop3) ls_stage2_result <=  ls_stage1_result; 
+        if(!stop4) ls_stage3_result <=  ls_stage2_result;
+        if(!stop5) ls_stage4_result <=  ls_stage3_result;  
+        if(!stop6) ls_stage5_result <=  ls_stage4_result;  
+        if(!stop7) ls_stage6_result <=  ls_stage5_result;
 
         //Branch
-        branch_stage2_result <= branch_stage1_result;
-        branch_stage3_result <= branch_stage2_result;
+        // branch_stage2_result <= branch_stage1_result;
+        // branch_stage3_result <= branch_stage2_result;
     end
 
 end
