@@ -1,6 +1,7 @@
 module forwardMacro (
     clk,
     reset,
+    branch_taken, branch_taken2, branch_taken3,
     stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9,
     rf_addr_ra_rd_even, 
     rf_addr_rb_rd_even, 
@@ -35,8 +36,8 @@ module forwardMacro (
     parameter REG_ADDR = UNIT_ID_SIZE + 1;  //Location of the register address in the 139-bit stage packet.
     parameter RESULT = UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH; //Location of the 128-bit result in the 139-bit stage packet.
 
-    input clk, reset,  stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9;
-    input logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1]    fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result, branch_stage3_result;
+    input clk, reset, branch_taken, branch_taken2, branch_taken3,  stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9;
+    input logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1]    fx1_stage2_result, byte_stage3_result, fx2_stage3_result, sp_fp_stage6_result, sp_int_stage7_result, perm_stage3_result, ls_stage6_result, branch_stage1_result;
     logic [0 : QUADWORD - 1] fw_ra_rd_even, fw_rb_rd_even, fw_rc_rd_even, fw_ra_rd_odd, fw_rb_rd_odd, fw_rc_rd_odd;
     //input logic [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD + WORD + 1)-1] ls_stage6_result;
 
@@ -307,8 +308,7 @@ module forwardMacro (
         
         if(!stop9) FWO8 <= FWO7;
 
-
-        if(!stop2) begin
+        if(!stop2 || !branch_taken) begin
             fw_ra_rd_even_out <= fw_ra_rd_even;
             fw_rb_rd_even_out <= fw_rb_rd_even;
             fw_rc_rd_even_out <= fw_rc_rd_even;

@@ -12,6 +12,8 @@ module evenPipe (
     addr_rt_wt_even,
     imm7,
     imm10,
+    imm16,
+    imm18,
     fx1_stage1_result,
     fx1_stage2_result, 
     byte_stage1_result,
@@ -37,6 +39,8 @@ module evenPipe (
     input clk, reset, stop3, stop4, stop5, stop6, stop7, stop8, flush;
     input [0 : UNIT_ID_SIZE - 1] unit_id;
     input [0 : INTERNAL_OPCODE_SIZE - 1] opcode;
+    input [0:IMM16-1] imm16;
+    input [0 : IMM18 - 1] imm18;
     input signed [0 : QUADWORD - 1] ra_rd_even, rb_rd_even, rc_rd_even;
     
     logic signed [0 : QUADWORD - 1] rt_wt_even;
@@ -54,12 +58,12 @@ module evenPipe (
                                                                           sp_fp_stage1_result, sp_fp_stage2_result, sp_fp_stage3_result, sp_fp_stage4_result, sp_fp_stage5_result,
                                                                           sp_int_stage1_result, sp_int_stage2_result, sp_int_stage3_result, sp_int_stage4_result, sp_int_stage5_result, sp_int_stage6_result;
     logic [0 : HALFWORD - 1] temp4;
-    logic [0 : WORD - 1] temp, temp2, temp5;
+    logic [0 : WORD - 1] y, temp, temp2, temp5;
     logic [0 : WORD] temp1;          //carry generate instr requires additional 1 bit to place the carry bit. (other instr that require this also uses temp1)
     logic [0 : QUADWORD - 1] temp3;
     logic [0 : HALFWORD - 1] s, t, r;   //temporary registers notations are followed as per IBM's Synergistic Processing Unit (SPU) ISA description maual for better clarity
     logic [0 : BYTE - 1] b, c;
-
+    logic [0:HALFWORD-1]s0;
     shortreal fp_temp;
 
 
@@ -205,9 +209,9 @@ module evenPipe (
                     FORM_SELECT_MARK_FOR_WORDS: begin
                             for (int i = 0, k = 0; i <= 3; i++, k = k + 4) begin
                                 if({ra_rd_even[28 : 31]}[i])
-                                    temp3[WORD * k +: WORD] = 32'd1;
+                                    temp3[WORD * i +: WORD] = 32'd1;
                                 else
-                                    temp3[WORD * k +: WORD] = 32'b0;
+                                    temp3[WORD * i +: WORD] = 32'b0;
                             end
                             rt_wt_even = temp3;
                             regWr_en_even = 1;
@@ -721,27 +725,27 @@ module evenPipe (
                     IMMEDIATE_LOAD_HALFWORD : begin
                         s0 = imm16;
                         for (int i = 0 ; i<8 ; i++) begin
-                            rt_wt_odd[16*i +:16] = s0;
+                            rt_wt_even[16*i +:16] = s0;
                         end
                         //RT = localstore
-                        regWr_en_odd = 1'b1;
-                        fx1_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                        regWr_en_even = 1'b1;
+                        fx1_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                     end 
                     IMMEDIATE_LOAD_WORD : begin
                         y = {{16{imm16[0]}},imm16};
                         for (int i = 0 ; i<4 ; i++) begin
-                            rt_wt_odd[32*i +:32] = y;
+                            rt_wt_even[32*i +:32] = y;
                         end
-                        regWr_en_odd = 1'b1;
-                        fx1_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                        regWr_en_even = 1'b1;
+                        fx1_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                     end                  
                     IMMEDIATE_LOAD_ADDRESS : begin
                         y = {14'b0,imm18};
                         for (int i = 0 ; i<4 ; i++) begin
-                            rt_wt_odd[32*i +:32] = y;
+                            rt_wt_even[32*i +:32] = y;
                         end
-                        regWr_en_odd = 1'b1;
-                        fx1_stage1_result = {unit_id, regWr_en_odd, addr_rt_wt_odd, rt_wt_odd};
+                        regWr_en_even = 1'b1;
+                        fx1_stage1_result = {unit_id, regWr_en_even, addr_rt_wt_even, rt_wt_even};
                     end
                         NOP: begin
                             regWr_en_even = 0;

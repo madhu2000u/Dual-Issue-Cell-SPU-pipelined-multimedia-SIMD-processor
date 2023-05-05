@@ -138,7 +138,7 @@ parameter immediate_load_address = 7'b0100001;
 
 
 //Misc Instrs
-parameter stop_and_signal = 11'b00000000000
+parameter stop_and_signal = 11'b00000000000;
 parameter nop = 11'b01000000001;
 parameter lnop = 11'b00000000001;
 
@@ -201,7 +201,7 @@ typedef enum logic [0 : 6] {
     BRANCH_ABSOLUTE = 7'd50,
     BRANCH_RELATIVE_AND_SET_LINK = 7'd51,
     BRANCH_ABSOLUTE_AND_SET_LINK = 7'd52,
-    BRANCH_INDIRECT = 7'd97;
+    BRANCH_INDIRECT = 7'd97,
     BRANCH_IF_NOT_ZERO_WORD = 7'd53,
     BRANCH_IF_ZERO_WORD = 7'd54,
     BRANCH_IF_NOT_ZERO_HALFWORD = 7'd55,
@@ -257,7 +257,7 @@ typedef enum logic [0 : 6] {
 
 
 //Misc Instrs
-    STOP_AND_SIGNAL = 7'98;
+    STOP_AND_SIGNAL = 7'd98,
     NOP = 7'd92,
     LNOP = 7'd93
 

@@ -19,13 +19,16 @@ module LocalStore (
     input logic ls_wr_en;
     output logic [0:127] ls_data_rd;
     
-    logic [0:32767] [0:7] lsa_mem;  //32 KB local store
+    logic  [0:7] lsa_mem [0:32767];  //32 KB local store
 
+    initial begin
+        $readmemh("../assembler/ls_load.txt", lsa_mem);
+    end
 
     always_ff @ (posedge clk) begin
         if(reset) begin
-            for (int i = 0; i < 32768; i++) begin
-                lsa_mem[i] <= $random;
+            for (int i = 512; i < 32768; i++) begin
+                lsa_mem[i] <= 0;
             end
         end
         

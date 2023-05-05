@@ -1,7 +1,8 @@
 module decode (
     clk,
     reset,
-    stop_and_signal, stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9,
+    branch_taken, branch_taken2,
+    stop_signal, stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9,
     issue_br_first_instr,
     instr1_dec_input,
     instr2,
@@ -23,7 +24,9 @@ module decode (
     issue_imm7_odd,
     issue_imm10_even,
     issue_imm10_odd,
+    issue_imm16_even,
     issue_imm16_odd,
+    issue_imm18_even,
     issue_imm18_odd,
     fx1_stage1_result,
     fx1_stage2_result,
@@ -62,7 +65,8 @@ module decode (
 );
     parameter REG_ADDR = UNIT_ID_SIZE + 1;  //Location of the register address in the 139-bit stage packet.
 
-    input clk, reset;
+    input clk, reset, branch_taken;
+    output logic branch_taken2;
     logic [0 : WORD - 1] instr1;
     input [0 : (UNIT_ID_SIZE + 1 + REG_ADDR_WIDTH + QUADWORD) - 1]  fx1_stage1_result, fx1_stage2_result,
                                                                     byte_stage1_result, byte_stage2_result, byte_stage3_result,
@@ -76,7 +80,7 @@ module decode (
 
     input [0 : WORD - 1] instr1_dec_input, instr2;
     logic issue_done;
-    output logic stop_and_signal, stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9;
+    output logic stop_signal, stop2, stop3, stop4, stop5, stop6, stop7, stop8, stop9;
     output logic dep_stall_instr2, dep_stall_instr1;
     output logic [0 : INTERNAL_OPCODE_SIZE - 1] issue_even_opcode, issue_odd_opcode;   //both conntected to even and odd pipe RESPECTIVELY.
     logic instr1_pipe, instr2_pipe;  //1 => even, 0 => odd
@@ -85,8 +89,8 @@ module decode (
     logic [0 : INTERNAL_OPCODE_SIZE - 1]    a,b,c,d,e,dec_instr1_opcode_even, dec_instr1_opcode_odd, dec_instr2_opcode_even, dec_instr2_opcode_odd, opcode_even, opcode_odd;
     output logic [0 : IMM7 - 1]             issue_imm7_even, issue_imm7_odd;
     output logic [0 : IMM10 - 1]            issue_imm10_even, issue_imm10_odd;
-    output logic [0 : IMM16 - 1]            issue_imm16_odd;
-    output logic [0 : IMM18 - 1]            issue_imm18_odd;
+    output logic [0 : IMM16 - 1]            issue_imm16_odd, issue_imm16_even;
+    output logic [0 : IMM18 - 1]            issue_imm18_odd, issue_imm18_even;
     // logic [0 : REG_ADDR_WIDTH - 1]          dec_addr_ra_rd_even, dec_addr_rb_rd_even, dec_addr_rc_rd_even, dec_addr_ra_rd_odd, dec_addr_rb_rd_odd, dec_addr_rc_rd_odd;  //Decoder output to issue logic
     logic [0 : REG_ADDR_WIDTH - 1]          dec_instr1_addr_ra_rd_even, dec_instr1_addr_rb_rd_even, dec_instr1_addr_rc_rd_even, dec_instr1_addr_ra_rd_odd, dec_instr1_addr_rb_rd_odd, dec_instr1_addr_rc_rd_odd;  //Decoder output to issue logic
     logic [0 : REG_ADDR_WIDTH - 1]          dec_instr2_addr_ra_rd_even, dec_instr2_addr_rb_rd_even, dec_instr2_addr_rc_rd_even, dec_instr2_addr_ra_rd_odd, dec_instr2_addr_rb_rd_odd, dec_instr2_addr_rc_rd_odd;  //Decoder output to issue logic
@@ -95,8 +99,8 @@ module decode (
     output logic [0 : REG_ADDR_WIDTH - 1]   issue_addr_rt_wt_even, issue_addr_rt_wt_odd;
     logic [0 : IMM7 - 1]             dec_instr1_imm7_even, dec_instr2_imm7_even,  dec_instr1_imm7_odd, dec_instr2_imm7_odd;
     logic [0 : IMM10 - 1]            dec_instr1_imm10_even, dec_instr2_imm10_even,  dec_instr1_imm10_odd, dec_instr2_imm10_odd;
-    logic [0 : IMM16 - 1]            dec_instr1_imm16_odd, dec_instr2_imm16_odd;
-    logic [0 : IMM18 - 1]            dec_instr1_imm18_odd, dec_instr2_imm18_odd;
+    logic [0 : IMM16 - 1]            dec_instr1_imm16_even, dec_instr2_imm16_even, dec_instr1_imm16_odd, dec_instr2_imm16_odd;
+    logic [0 : IMM18 - 1]            dec_instr1_imm18_even, dec_instr2_imm18_even, dec_instr1_imm18_odd, dec_instr2_imm18_odd;
     logic                                   dec_instr1_regWr_even, dec_instr1_regWr_odd, dec_instr2_regWr_even, dec_instr2_regWr_odd;
     logic                                   issue_regWr_even, issue_regWr_odd;
     logic [0 : UNIT_ID_SIZE - 1]            dec_instr1_unitId_even, dec_instr1_unitId_odd, dec_instr2_unitId_even, dec_instr2_unitId_odd;
@@ -136,7 +140,7 @@ module decode (
         {shuffle_bytes ,  SHUFFLE_BYTES ,  1'b0, 1'b1, 3'd5}
     };
     logic [0:18] instr_ROM_7 [0:0] = {
-        {immediate_load_address,  IMMEDIATE_LOAD_ADDRESS ,  1'b1, 1'b1, 3'd6}
+        {immediate_load_address,  IMMEDIATE_LOAD_ADDRESS ,  1'b1, 1'b1, 3'd1}
     };
     logic [0:19] instr_ROM_8[0:18] = {
         {add_word_immediate ,  ADD_WORD_IMMEDIATE ,  1'b1, 1'b1, 3'd1},
@@ -169,8 +173,8 @@ module decode (
         // {branch_relative ,  BRANCH_RELATIVE ,  1'b0, 1'b0, 3'd7},
         // {branch_absolute ,  BRANCH_ABSOLUTE ,  1'b0, 1'b0, 3'd7},
         {load_quadword_a ,  LOAD_QUADWORD_A ,  1'b0, 1'b1, 3'd6},
-        {immediate_load_halfword ,  IMMEDIATE_LOAD_HALFWORD ,  1'b1, 1'b1, 3'd6},
-        {immediate_load_word ,  IMMEDIATE_LOAD_WORD ,  1'b1, 1'b1, 3'd6}
+        {immediate_load_halfword ,  IMMEDIATE_LOAD_HALFWORD ,  1'b1, 1'b1, 3'd1},
+        {immediate_load_word ,  IMMEDIATE_LOAD_WORD ,  1'b1, 1'b1, 3'd1}
     };
     logic [0:22] instr_ROM_11 [0:56] = { //EVEN = 1, ODD = 0;
         //{opcoe, bit-padding, internal_opcode, even-odd bit, regWr-bit, unitID}
@@ -241,9 +245,9 @@ module decode (
 
     always_comb begin : Decoder_Route_Logic
             if(instr1[0:10] == stop_and_signal || instr2[0:10] == stop_and_signal) begin
-                stop_and_signal = 1;
+                stop_signal = 1;
             end
-            else stop_and_signal = 0;
+            else stop_signal = 0;
             //instr1 decode
             for (int i = 0; i < 96; i++) begin
                 if(instr1[0:8] == instr_ROM_br[i][0:8]) begin
@@ -319,8 +323,9 @@ module decode (
                     // break;
                 end
                 //RI16 type (9-bit opcode)
-                else if(instr1[0:8] == instr_ROM_9[i][0:8]) begin   //no RI16 instr for even pipe
+                else if(instr1[0:8] == instr_ROM_9[i][0:8]) begin
                     if(instr_ROM_9[i][16]) begin
+                        dec_instr1_imm16_even = instr1[9:24];
                         dec_instr1_addr_rt_wt_even = instr1[25:31];
                         dec_instr1_opcode_even = instr_ROM_9[i][9 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 1;
@@ -364,8 +369,9 @@ module decode (
                     // break;
                 end
                 //RI18 type (7-bit opcode)
-                else if(instr1[0:6] == instr_ROM_7[i][0:6]) begin //TODO: no even instr wit 7-bit opcode so remove if-else later
+                else if(instr1[0:6] == instr_ROM_7[i][0:6]) begin //TODO: no odd instr wit 7-bit opcode so remove if-else later
                     if(instr_ROM_7[i][14]) begin
+                        dec_instr1_imm18_even = instr1[7:24];
                         dec_instr1_addr_rt_wt_even = instr1[25:31];
                         dec_instr1_opcode_even = instr_ROM_7[i][7 +: INTERNAL_OPCODE_SIZE];
                         instr1_pipe = 1;
@@ -497,6 +503,7 @@ module decode (
                 //RI16 type (9-bit opcode)
                 else if(instr2[0:8] == instr_ROM_9[i][0:8]) begin
                     if(instr_ROM_9[i][16]) begin
+                        dec_instr2_imm16_even = instr2[9:24];
                         dec_instr2_addr_rt_wt_even = instr2[25:31];
                         dec_instr2_opcode_even = instr_ROM_9[i][9 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 1;
@@ -540,6 +547,7 @@ module decode (
                 //RI18 type (7-bit opcode)
                 else if(instr2[0:6] == instr_ROM_7[i][0:6]) begin
                     if(instr_ROM_7[i][14]) begin
+                        dec_instr2_imm18_even = instr2[7:24];
                         dec_instr2_addr_rt_wt_even = instr2[25:31];
                         dec_instr2_opcode_even = instr_ROM_7[i][7 +: INTERNAL_OPCODE_SIZE];
                         instr2_pipe = 1;
@@ -1179,13 +1187,12 @@ module decode (
                         dep_stall_instr2 = 0;
                     end
             end
-            else dep_stall_instr1 = 0;
         end
 
         //RAW, WAW and Strutural Hazard check for instruction 2
         for (int i = 0; i < 96; i++) begin
             if(instr2[0:10] == instr_ROM_st_qw_x[i][0:10]) begin    //this has rt as source
-                if( ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                if( (((instr2[0:10] != nop && instr2[0:10] != lnop) && ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) ||
                     ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
@@ -1291,7 +1298,7 @@ module decode (
                     // (inst25[31:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     //TODO: 25m31e branche because only one branch stage and then directly yo forward(instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
+                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE])))) ||
                     (instr1_pipe == instr2_pipe) ||
                     (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
                     ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin
@@ -1303,7 +1310,7 @@ module decode (
             end
             
             else if(instr2[0:8] == instrt_ROM_st_qw_a[i][0:8] || instr2[0:8] == instr_ROM_br_rt_src[i][0:8]) begin    //this has rt as source
-                if(((instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) || //RAW in same stage decode
+                if(((instr2[0:10] != nop && instr2[0:10] != lnop) && (((instr2[25:31] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) || //RAW in same stage decode
                     ((instr2[25:31] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[25:31] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||   //RAW in RF stage with the instr in decode
                     (instr2[25:31] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (inst25[31:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
@@ -1337,7 +1344,7 @@ module decode (
                     // (inst25[31:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     //TODO: 25m31e branche because only one branch stage and then directly yo forward(instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
+                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]))) ||
                     (instr1_pipe == instr2_pipe) ||
                     (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
                     ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin
@@ -1348,7 +1355,7 @@ module decode (
                     end
             end
             else if(instr2[0:7] == instr_ROM_st_qw_d[i][0:7]) begin
-                if( ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                if( ((instr2[0:10] != nop && instr2[0:10] != lnop) && (((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
                     ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
@@ -1418,7 +1425,7 @@ module decode (
                     // (inst25[31:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     //TODO: 25m31e branche because only one branch stage and then directly yo forward(instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
+                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]))) ||
                     (instr1_pipe == instr2_pipe) ||
                     (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
                     ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin
@@ -1431,7 +1438,7 @@ module decode (
             else if(instr2[0:10] == instr_ROM_11[i][0:10]) begin
                 //RAW hazard check for instruction 2
                 if(instr2[0:10] == add_extended || instr2[0:10] == subtract_from_extended) begin
-                    if (((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                    if (((instr2[0:10] != nop && instr2[0:10] != lnop) && (((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
                         ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                         (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                         // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
@@ -1537,7 +1544,7 @@ module decode (
                         // (instr2[25:31] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                         (instr2[25:31] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                         (instr2[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                        (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
+                        (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]))) ||
                         (instr1_pipe == instr2_pipe) ||
                         (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
                         ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin
@@ -1547,7 +1554,7 @@ module decode (
                             dep_stall_instr2 = 0;
                         end
                 end
-                else if(((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                else if(((instr2[0:10] != nop && instr2[0:10] != lnop) && (((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
                     ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
@@ -1617,7 +1624,7 @@ module decode (
                     // (instr2[11:17] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[11:17] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                    (instr2[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) || 
+                    (instr2[11:17] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]))) || 
                     (instr1_pipe == instr2_pipe) || 
                     (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
                     ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin     //WAW or Structural Hazard
@@ -1648,7 +1655,7 @@ module decode (
             end
 
             else if(instr2[0:7] == instr_ROM_8[i][0:7]) begin
-                if( ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                if( ((instr2[0:10] != nop && instr2[0:10] != lnop) && (((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
                     ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
@@ -1682,7 +1689,7 @@ module decode (
                     // (instr2[18:24] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[18:24] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                    (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
+                    (instr2[18:24] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]))) ||
                     (instr1_pipe == instr2_pipe) || 
                     ((((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
                     ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd))))) begin
@@ -1696,7 +1703,7 @@ module decode (
             end
 
             else if(instr2[0:3] == instr_ROM_4[i][0:3]) begin
-                if( ((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
+                if( ((instr2[0:10] != nop && instr2[0:10] != lnop) && (((instr2[18:24] == (instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd)) && (instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd)) ||
                     ((instr2[18:24] == issue_addr_rt_wt_even) && issue_regWr_even) || ((instr2[18:24] == issue_addr_rt_wt_odd) && issue_regWr_odd) ||
                     (instr2[18:24] == fx1_stage1_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage1_result    [UNIT_ID_SIZE]) ||
                     // (instr2[18:24] == fx1_stage2_result    [REG_ADDR +: REG_ADDR_WIDTH]) && (fx1_stage2_result    [UNIT_ID_SIZE]) ||
@@ -1802,7 +1809,7 @@ module decode (
                     // (instr2[25:31] == ls_stage6_result     [REG_ADDR +: REG_ADDR_WIDTH]) && (ls_stage6_result     [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage1_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage1_result [UNIT_ID_SIZE]) ||
                     (instr2[25:31] == branch_stage2_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage2_result [UNIT_ID_SIZE]) ||
-                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]) ||
+                    (instr2[25:31] == branch_stage3_result [REG_ADDR +: REG_ADDR_WIDTH]) && (branch_stage3_result [UNIT_ID_SIZE]))) ||
                     (instr1_pipe == instr2_pipe) ||
                     (((instr1_pipe ? dec_instr1_addr_rt_wt_even : dec_instr1_addr_rt_wt_odd) == (instr2_pipe ? dec_instr2_addr_rt_wt_even : dec_instr2_addr_rt_wt_odd)) &&
                     ((instr1_pipe ? dec_instr1_regWr_even : dec_instr1_regWr_odd) && (instr2_pipe ? dec_instr2_regWr_even : dec_instr2_regWr_odd)))) begin
@@ -1835,9 +1842,8 @@ module decode (
     end
 
     always_ff @(posedge clk ) begin : IssueLogicController
-        if(reset)
+        if(reset) begin
             issue_done <= 0;
-            stop1 <= 0;
             stop2 <= 0;
             stop3 <= 0;
             stop4 <= 0;
@@ -1846,6 +1852,16 @@ module decode (
             stop7 <= 0;
             stop8 <= 0;
             stop9 <= 0;
+            issue_addr_ra_rd_even <= 0;
+            issue_addr_rb_rd_even <= 0;
+            issue_addr_rc_rd_even <= 0;
+            issue_addr_ra_rd_odd <= 0;
+            issue_addr_rb_rd_odd <= 0;
+            issue_addr_rc_rd_odd <= 0; //Decoder output
+            issue_addr_rc_rd_odd <= 0;
+            issue_addr_rt_wt_even <= 0;
+            issue_addr_rt_wt_odd <= 0;
+        end
         else begin
             if(dep_stall_instr2 && !dep_stall_instr1 && !issue_done) begin
                 issue_done <= 1;
@@ -1854,8 +1870,7 @@ module decode (
                 issue_done <= 0;
             end
 
-            stop1 <= stop_and_signal;
-            stop2 <= stop1;
+            stop2 <= stop_signal;
             stop3 <= stop2;
             stop4 <= stop3;
             stop5 <= stop4;
@@ -1864,8 +1879,11 @@ module decode (
             stop8 <= stop7;
             stop9 <= stop8;
         end
-        if(!stop_and_signal) begin
-            if(dep_stall_instr1 || branch_taken) begin
+
+        branch_taken2 <= branch_taken;
+
+        if(!stop_signal) begin
+            if(dep_stall_instr1 || branch_taken || branch_taken2) begin
                 issue_even_opcode <= NOP;
                 issue_odd_opcode <= LNOP;
                 issue_addr_ra_rd_even <= 0;
@@ -1881,7 +1899,9 @@ module decode (
                 issue_imm7_odd <= 0;
                 issue_imm10_even <= 0;
                 issue_imm10_odd <= 0;
+                issue_imm16_even <= 0;
                 issue_imm16_odd <= 0;
+                issue_imm18_even <= 0;
                 issue_imm18_odd <= 0;
                 issue_regWr_even <= 0;
                 issue_regWr_odd <= 0;
@@ -1890,6 +1910,8 @@ module decode (
             end
             else if (dep_stall_instr2 && !dep_stall_instr1) begin
                 // if(!issue_done) begin
+                    if(br_first_instr) issue_br_first_instr <= br_first_instr;
+
                     if(instr1_pipe) begin
                         issue_even_opcode <= dec_instr1_opcode_even;       //issue_even_opcode always connected to even pipe and same for odd
                         issue_addr_ra_rd_even <= dec_instr1_addr_ra_rd_even;      //TODO: no need of issue_addr_....., just pass dec_addr_... as output to this module, only opcode requires that issue since we need to route it. //Updated, NO-TODO: actually it is required since it is a stage - should go throught the register at posedge to next stage.
@@ -1905,6 +1927,8 @@ module decode (
 
                         issue_imm7_even <= dec_instr1_imm7_even;
                         issue_imm10_even <= dec_instr1_imm10_even;
+                        issue_imm16_even <= dec_instr1_imm16_even;
+                        issue_imm18_even <= dec_instr1_imm18_even;
 
                         issue_regWr_even <= dec_instr1_regWr_even;
                         issue_regWr_odd <= 0;
@@ -1947,6 +1971,8 @@ module decode (
                         
                         issue_imm7_even <= dec_instr1_imm7_even;
                         issue_imm10_even <= dec_instr1_imm10_even;
+                        issue_imm16_even <= dec_instr1_imm16_even;
+                        issue_imm18_even <= dec_instr1_imm18_even;
                         
                         issue_regWr_even <= dec_instr1_regWr_even;
 
@@ -1979,6 +2005,8 @@ module decode (
                         
                         issue_imm7_even <= dec_instr2_imm7_even;
                         issue_imm10_even <= dec_instr2_imm10_even;
+                        issue_imm16_even <= dec_instr2_imm16_even;
+                        issue_imm18_even <= dec_instr2_imm18_even;
 
                         issue_regWr_even <= dec_instr2_regWr_even;
 

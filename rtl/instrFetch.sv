@@ -12,7 +12,7 @@ module instrFetch (
 
 );
 
-input clk, reset, stop_and_signal branch_taken, dep_stall_instr1, dep_stall_instr2;
+input clk, reset, stop_and_signal, branch_taken, dep_stall_instr1, dep_stall_instr2;
 input [0 : WORD - 1] BTA;
 logic [0 : WORD - 1] instr1_read, instr2_read;
 output logic [0 : WORD - 1] PC, instr1, instr2;
@@ -33,7 +33,7 @@ always_comb begin
     end
     else begin
         for (int i = 0; i < 4; i++) begin
-            instr1_read = {11'b00000000001, 21'd0};  //send nop
+            instr1_read = {11'b00000000001, 21'd0};  //send lnop
             instr2_read[8 * i +: 8] = imem_memory[PC + i];
         end
 
@@ -45,7 +45,7 @@ always_ff @( posedge clk ) begin : instrFetch
         PC <= 0;
     end
     else if(!stop_and_signal) begin
-        if((!dep_stall_instr1 && !dep_stall_instr2) || !branch_taken) begin
+        if((!dep_stall_instr1 && !dep_stall_instr2) && !branch_taken) begin
             if(!PC[29]) 
                 PC <= PC + 8;
             else 
