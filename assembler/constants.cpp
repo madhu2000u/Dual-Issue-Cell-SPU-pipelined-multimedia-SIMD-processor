@@ -78,6 +78,7 @@ const std::map<std::string, std::string> opcode_map{
     //BRANCH
    {"br", "001100100"},
    {"bra", "001100000"},
+   {"bi", "00110101000"},
    {"brsl", "001100110"},
    {"brasl", "001100010"},
    {"brnz", "001000010"},
@@ -136,6 +137,7 @@ const std::map<std::string, std::string> opcode_map{
    
    
     //Misc Instrs
+    {"stop", "00000000000"},
     {"nop", "01000000001"},
    {"lnop", "00000000001"},
 

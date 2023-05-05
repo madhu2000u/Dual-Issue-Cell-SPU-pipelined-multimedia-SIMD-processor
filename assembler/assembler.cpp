@@ -9,12 +9,6 @@
 
 
 
-
-// std::string lexer(std::string instr){
-    
-
-// }
-
 void parser(std::string instr, std::vector<std::string> &parsed_instr){
     std::stringstream ss(instr);
     std::string token;
@@ -47,7 +41,34 @@ std::string codegen(std::vector<std::string> parsed_instr){
             //for RI7 instruction, the I7 field is at the same location and bit count as RR's rb field (check SPU ISA docs' instruction formats)
             //so doesn't matter in assembler if we put I7 values in rb field as it depends on the processor to interpret it as immediate or register field based on opcode
             {   
-                if(parsed_instr[0] == "nop" || parsed_instr[0] == "lnop"){
+                if(parsed_instr[0] == "stop"){
+                    std::bitset<INSTR_LEN> stop(0);
+                    final_binary_instr = stop.to_string();
+                    return final_binary_instr;
+                }
+                else if(parsed_instr[0] == "bi"){
+                    opcode = opcode_map.at(parsed_instr[0]);
+                    opcode_bits = std::bitset<REG_ADDR_LEN>(std::stoi(parsed_instr[1]));
+                    ra = opcode_bits.to_string();
+                    rt = "0000000";
+                    rb = "0000000";
+                    final_binary_instr = opcode + rb + ra + rt;
+                    return final_binary_instr;
+
+                }
+                else if(parsed_instr[0] == "clz" || parsed_instr[0] == "cntb" || parsed_instr[0] == "fsmh" || parsed_instr[0] == "fsm" || parsed_instr[0] == "gbb" || parsed_instr[0] == "gbh" || parsed_instr[0] == "gb"){
+                    opcode = opcode_map.at(parsed_instr[0]);
+                    opcode_bits = std::bitset<REG_ADDR_LEN>(std::stoi(parsed_instr[1]));
+                    rt = opcode_bits.to_string();
+                    rb = "0000000";
+                    opcode_bits = std::bitset<REG_ADDR_LEN>(std::stoi(parsed_instr[2]));
+                    ra = opcode_bits.to_string();
+                    final_binary_instr = opcode + rb + ra + rt;
+                    return final_binary_instr;
+
+                }
+
+                else if(parsed_instr[0] == "nop" || parsed_instr[0] == "lnop"){
                     opcode = opcode_map.at(parsed_instr[0]);
                     rt = "0000000";
                     rb = "0000000";
@@ -147,12 +168,12 @@ std::string codegen(std::vector<std::string> parsed_instr){
 
             case instrFormatOpcodeLenEnum::RI16:     //SPU interpretation: op[8-bits]imm10[10]rb[7]rt[7]  
             {
-                if((parsed_instr[0] == "br" || parsed_instr[0] == "bra" || parsed_instr[0] == "bi")){
+                if((parsed_instr[0] == "br" || parsed_instr[0] == "bra")){
                     if(parsed_instr.size() != 2){
                         std::cerr << "invalid number of operands for instruction type RI16 for branch instructions - " << parsed_instr[0] << std::endl; 
                         return "";
                     }
-                    std::bitset<IMM16_LEN> imm16_bits(std::stoi(parsed_instr[1]));;
+                    std::bitset<IMM16_LEN> imm16_bits(std::stoi(parsed_instr[1]));
                     rb = imm16_bits.to_string();
                     rt = "0000000";
 
@@ -198,7 +219,7 @@ std::string codegen(std::vector<std::string> parsed_instr){
                 rt = opcode_bits.to_string();
 
                 //rb is used as the imm18 field but the bitset param changes to the imm length
-                std::bitset<IMM18_LEN> imm18_bits(std::stoi(parsed_instr[3]));
+                std::bitset<IMM18_LEN> imm18_bits(std::stoi(parsed_instr[2]));
                 rb = imm18_bits.to_string();
                 
                 final_binary_instr = opcode + rb + rt;
@@ -242,6 +263,7 @@ int main(int argc, char *argv[]){
     while (std::getline(infile, instr)){
         parser(instr, parsed_instr);    //Parse
         instr = codegen(parsed_instr);  //Codegen
+        std::cout << "line count - " << line_count + 1 << std::endl;
         line_count++;
         if(instr.empty()){
             std::cerr << "assembler.cpp:Error at line:"<< line_count <<". Codegen couldn't generate machine code due to error. Exiting" << std::endl;
